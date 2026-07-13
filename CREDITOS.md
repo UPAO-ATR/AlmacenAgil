@@ -1,17 +1,12 @@
-# Créditos
+Diseño visual original
+El diseño visual original de Almacén Ágil fue creado en apoyo de un compañero de trabajo y se utiliza con su autorización.
 
-## Diseño visual original
 
-El diseño visual original de Almacén Ágil fue creado por un colaborador del proyecto y se utiliza con su autorización.
+markdown
+Diseño visual original por Angel TR
 
-Antes de publicar el repositorio, reemplaza este texto con su nombre y perfil:
 
-```markdown
-Diseño visual original por [@UsuarioGitHub](https://github.com/UsuarioGitHub).
-```
-
-## Reconstrucción e implementación
-
+ Reconstrucción e implementación
 - Reconstrucción del frontend y backend.
 - Flujo de cotizaciones, inventario y reabastecimiento.
 - PostgreSQL, Docker, Render y Neon.
