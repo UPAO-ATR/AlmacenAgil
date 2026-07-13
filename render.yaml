@@ -7,37 +7,52 @@ services:
     dockerContext: .
     healthCheckPath: /api/salud
     autoDeployTrigger: commit
-    maxShutdownDelaySeconds: 30
+
     envVars:
       - key: ENTORNO
         value: produccion
+
       - key: PORT
         value: "10000"
+
       - key: PUERTO
         value: "3000"
+
       - key: CONEXIONESBASE
         value: "5"
+
       - key: URLBASE
         sync: false
+
       - key: SECRETOACCESO
         generateValue: true
+
       - key: CLAVEADMINISTRADOR
         sync: false
+
       - key: CLAVEADMINRESPALDO
         sync: false
+
       - key: CLAVEVENTAS
         sync: false
+
       - key: CLAVEALMACEN
         sync: false
+
       - key: SERVIDORCORREO
         value: ""
+
       - key: PUERTOCORREO
         value: "587"
+
       - key: CORREOSEGURIDAD
         value: "false"
+
       - key: USUARIOCORREO
         value: ""
+
       - key: CLAVECORREO
         value: ""
+
       - key: REMITENTECORREO
         value: noresponder@almacenagil.local
