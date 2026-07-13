@@ -1,0 +1,78 @@
+server {
+  listen ${PORT};
+  server_name _;
+  root /usr/share/nginx/html;
+  index index.html;
+  server_tokens off;
+
+  client_body_temp_path /tmp/nginxclient;
+  proxy_temp_path /tmp/nginxproxy;
+  client_max_body_size 2m;
+  client_body_buffer_size 64k;
+  client_body_timeout 10s;
+  client_header_timeout 10s;
+  keepalive_timeout 20s;
+  send_timeout 15s;
+  reset_timedout_connection on;
+
+  add_header Content-Security-Policy "default-src 'none'; script-src 'self'; style-src 'self'; img-src 'self' data:; font-src 'self'; connect-src 'self'; manifest-src 'self'; worker-src 'none'; media-src 'none'; frame-src 'none'; base-uri 'none'; form-action 'self'; frame-ancestors 'none'; object-src 'none'" always;
+  add_header Strict-Transport-Security "max-age=63072000; includeSubDomains; preload" always;
+  add_header X-Content-Type-Options "nosniff" always;
+  add_header X-Frame-Options "DENY" always;
+  add_header Referrer-Policy "no-referrer" always;
+  add_header Permissions-Policy "accelerometer=(), autoplay=(), camera=(), geolocation=(), gyroscope=(), microphone=(), payment=(), usb=()" always;
+  add_header Cross-Origin-Opener-Policy "same-origin" always;
+  add_header Cross-Origin-Resource-Policy "same-origin" always;
+  add_header X-Permitted-Cross-Domain-Policies "none" always;
+  add_header Cache-Control "no-store" always;
+
+  if ($http_x_forwarded_proto = http) {
+    return 301 https://$host$request_uri;
+  }
+
+  if ($request_method = TRACE) {
+    return 405;
+  }
+
+  if ($request_method = CONNECT) {
+    return 405;
+  }
+
+  location = /api/acceso {
+    proxy_pass http://127.0.0.1:3000;
+    proxy_http_version 1.1;
+    proxy_set_header Connection "";
+    proxy_set_header Host $http_host;
+    proxy_set_header X-Real-IP $remote_addr;
+    proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+    proxy_set_header X-Forwarded-Proto $http_x_forwarded_proto;
+    proxy_connect_timeout 3s;
+    proxy_send_timeout 15s;
+    proxy_read_timeout 15s;
+  }
+
+  location /api/ {
+    proxy_pass http://127.0.0.1:3000;
+    proxy_http_version 1.1;
+    proxy_set_header Connection "";
+    proxy_set_header Host $http_host;
+    proxy_set_header X-Real-IP $remote_addr;
+    proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+    proxy_set_header X-Forwarded-Proto $http_x_forwarded_proto;
+    proxy_connect_timeout 3s;
+    proxy_send_timeout 15s;
+    proxy_read_timeout 15s;
+  }
+
+  location ~ (^|/)\. {
+    deny all;
+  }
+
+  location ~* \.(js|css|png|jpg|jpeg|svg|webp|woff2)$ {
+    try_files $uri =404;
+  }
+
+  location / {
+    try_files $uri $uri/ /index.html;
+  }
+}

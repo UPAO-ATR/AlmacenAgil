@@ -1,0 +1,31 @@
+# syntax=docker/dockerfile:1.7
+FROM node:24.18.0-bookworm-slim AS ConstructorAplicacion
+WORKDIR /aplicacion
+COPY Aplicacion/package*.json ./
+RUN --mount=type=cache,target=/root/.npm npm ci --no-audit --no-fund
+COPY Aplicacion/ ./
+RUN npm run construir
+
+FROM node:24.18.0-bookworm-slim AS ConstructorServidor
+WORKDIR /servidor
+COPY Servidor/package*.json ./
+RUN --mount=type=cache,target=/root/.npm npm ci --omit=dev --no-audit --no-fund
+COPY Servidor/src ./src
+
+FROM nginxinc/nginx-unprivileged:1.30.3-alpine
+USER root
+RUN apk add --no-cache nodejs tini
+RUN mkdir -p /aplicacion/Servidor /aplicacion/BaseDatos /tmp/nginxclient /tmp/nginxproxy \
+  && chown -R 101:101 /aplicacion /tmp/nginxclient /tmp/nginxproxy /usr/share/nginx/html
+COPY --from=ConstructorAplicacion /aplicacion/dist /usr/share/nginx/html
+COPY --from=ConstructorServidor /servidor /aplicacion/Servidor
+COPY BaseDatos/Inicial.sql /aplicacion/BaseDatos/Inicial.sql
+COPY Render/nginx.conf.template /etc/nginx/templates/default.conf.template
+COPY Render/InicioRender.sh /aplicacion/InicioRender.sh
+RUN chmod 755 /aplicacion/InicioRender.sh
+ENV PORT=10000
+ENV PUERTO=3000
+ENV RUTAESQUEMA=/aplicacion/BaseDatos/Inicial.sql
+EXPOSE 10000
+USER 101
+CMD ["/sbin/tini","--","/aplicacion/InicioRender.sh"]

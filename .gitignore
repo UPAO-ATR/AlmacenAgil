@@ -1,0 +1,9 @@
+.env
+**/node_modules/
+Aplicacion/dist/
+Respaldos/
+*.log
+.DS_Store
+*.sql.gz
+*.backup
+.env

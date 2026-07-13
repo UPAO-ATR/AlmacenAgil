@@ -1,0 +1,155 @@
+name: almacenagilseguro
+
+x-registro: &RegistroComun
+  driver: json-file
+  options:
+    max-size: "10m"
+    max-file: "3"
+
+services:
+  basedatos:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_DB: almacenagil
+      POSTGRES_USER: almacenagil
+      POSTGRES_PASSWORD: ${CLAVEPOSTGRES:?Ejecuta PrepararEntorno}
+    volumes:
+      - DatosPostgres:/var/lib/postgresql/data
+      - ./BaseDatos/Inicial.sql:/docker-entrypoint-initdb.d/01Inicial.sql:ro
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U almacenagil -d almacenagil && psql -U almacenagil -d almacenagil -tAc \"SELECT to_regclass('public.usuarios') IS NOT NULL\" | grep -q t"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+      start_period: 10s
+    networks:
+      - RedInterna
+    restart: unless-stopped
+    pids_limit: 200
+    shm_size: 128mb
+    cpus: 1.0
+    mem_limit: 768m
+    security_opt:
+      - no-new-privileges:true
+    logging: *RegistroComun
+
+  servidor:
+    build: ./Servidor
+    environment:
+      ENTORNO: ${ENTORNO:-desarrollo}
+      PUERTO: 3000
+      URLBASE: postgresql://almacenagil:${CLAVEPOSTGRES:?Ejecuta PrepararEntorno}@basedatos:5432/almacenagil
+      SECRETOACCESO: ${SECRETOACCESO:?Ejecuta PrepararEntorno}
+      CLAVEADMINISTRADOR: ${CLAVEADMINISTRADOR:?Ejecuta PrepararEntorno}
+      CLAVEADMINRESPALDO: ${CLAVEADMINRESPALDO:?Ejecuta PrepararEntorno}
+      CLAVEVENTAS: ${CLAVEVENTAS:?Ejecuta PrepararEntorno}
+      CLAVEALMACEN: ${CLAVEALMACEN:?Ejecuta PrepararEntorno}
+      RUTAESQUEMA: /aplicacion/BaseDatos/Inicial.sql
+      SERVIDORCORREO: ${SERVIDORCORREO:-}
+      PUERTOCORREO: ${PUERTOCORREO:-587}
+      CORREOSEGURIDAD: ${CORREOSEGURIDAD:-false}
+      USUARIOCORREO: ${USUARIOCORREO:-}
+      CLAVECORREO: ${CLAVECORREO:-}
+      REMITENTECORREO: ${REMITENTECORREO:-noresponder@almacenagil.local}
+    volumes:
+      - ./BaseDatos/Inicial.sql:/aplicacion/BaseDatos/Inicial.sql:ro
+    depends_on:
+      basedatos:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "node", "-e", "fetch('http://127.0.0.1:3000/api/salud').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+      start_period: 10s
+    networks:
+      - RedInterna
+    restart: unless-stopped
+    read_only: true
+    tmpfs:
+      - /tmp
+    security_opt:
+      - no-new-privileges:true
+    cap_drop:
+      - ALL
+    pids_limit: 200
+    cpus: 0.75
+    mem_limit: 512m
+    init: true
+    logging: *RegistroComun
+
+  aplicacion:
+    build: ./Aplicacion
+    networks:
+      - RedInterna
+    restart: unless-stopped
+    read_only: true
+    tmpfs:
+      - /tmp
+      - /var/cache/nginx
+      - /var/run
+    security_opt:
+      - no-new-privileges:true
+    cap_drop:
+      - ALL
+    pids_limit: 100
+    cpus: 0.25
+    mem_limit: 128m
+    init: true
+    logging: *RegistroComun
+
+  puerta:
+    image: nginxinc/nginx-unprivileged:1.30.3
+    ports:
+      - "127.0.0.1:8080:8080"
+    volumes:
+      - ./Nginx/nginx.conf:/etc/nginx/nginx.conf:ro
+    depends_on:
+      servidor:
+        condition: service_healthy
+      aplicacion:
+        condition: service_started
+    networks:
+      - RedInterna
+    restart: unless-stopped
+    read_only: true
+    tmpfs:
+      - /tmp
+      - /var/cache/nginx
+      - /var/run
+    security_opt:
+      - no-new-privileges:true
+    cap_drop:
+      - ALL
+    pids_limit: 100
+    cpus: 0.25
+    mem_limit: 128m
+    init: true
+    logging: *RegistroComun
+
+  tunel:
+    image: cloudflare/cloudflared:2026.7.1
+    command: tunnel --no-autoupdate --url http://puerta:8080
+    depends_on:
+      - puerta
+    networks:
+      - RedInterna
+    restart: unless-stopped
+    profiles:
+      - publicacion
+    security_opt:
+      - no-new-privileges:true
+    cap_drop:
+      - ALL
+    pids_limit: 100
+    cpus: 0.25
+    mem_limit: 128m
+    init: true
+    logging: *RegistroComun
+
+networks:
+  RedInterna:
+    driver: bridge
+
+volumes:
+  DatosPostgres:

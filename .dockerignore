@@ -1,0 +1,7 @@
+.git
+.env
+Respaldos
+**/node_modules
+**/dist
+*.log
+*.zip

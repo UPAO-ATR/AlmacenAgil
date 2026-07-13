@@ -1,0 +1,9 @@
+{
+  "name": "almacenagilseguro",
+  "private": true,
+  "scripts": {
+    "iniciar": "docker compose up --build",
+    "detener": "docker compose down",
+    "probar": "docker compose run --rm servidor npm test"
+  }
+}
