@@ -1,6 +1,6 @@
 El despliegue remoto utiliza un único servicio Docker en Render y PostgreSQL administrado en Neon.
 
- Arquitectura
+Arquitectura
 
 text
 Navegador
@@ -9,21 +9,23 @@ Render
   ├ Nginx
   ├ React compilado
   └ Servidor Node.js
-          ↓ TLS
+          ↓ TLS verificado
       Neon PostgreSQL
 
 
- 1. Crear la base en Neon
+1. Crear la base en Neon
 
-1. Crea una cuenta gratuita en Neon.
-2. Crea un proyecto llamado “AlmacenAgil”.
-3. Pulsa “Connect”.
-4. Selecciona la cadena agrupada, cuyo host contiene “-pooler”.
-5. Copia la cadena completa con “sslmode=require”.
+1. Crea un proyecto llamado “AlmacenAgil”.
+2. Pulsa “Connect”.
+3. Activa “Connection pooling”.
+4. Muestra la contraseña y copia la cadena completa.
+5. Confirma que el host contiene “-pooler”.
 
-Nota de Gamba: No necesitas ejecutar manualmente “Inicial.sql”. El servidor aplica el esquema de forma idempotente al iniciar.
+El servidor normaliza la conexión de Neon a “sslmode=verify-full” antes de crear el pool.
 
- 2. Preparar las contraseñas
+No ejecutes manualmente “Inicial.sql”. El servidor aplica el esquema de forma idempotente al iniciar y conserva los registros existentes.
+
+2. Preparar contraseñas
 
 Ejecuta localmente una sola vez:
 
@@ -31,7 +33,7 @@ bash
 ./PrepararEntorno.sh
 
 
-Nota de Gamba: Debes guardar los valores de estas variables sin subir “.env” al repositorio:
+Guarda estos valores sin subir “.env”:
 
 text
 CLAVEADMINISTRADOR
@@ -46,11 +48,9 @@ text
 respaldo@almacenagil.pe
 
 
-El preparador usa un formato más fácil de transcribir. La cuenta no se puede bloquear desde el panel.
+3. Subir a GitHub
 
- 3. Subir a GitHub
-
-Comprueba primero:
+Comprueba:
 
 bash
 git check-ignore .env
@@ -59,30 +59,45 @@ git status
 
 “.env” debe permanecer fuera del repositorio.
 
- 4. Crear el servicio en Render
+4. Crear el servicio en Render
 
-1. En Render selecciona “New” y luego “Blueprint”.
+1. Selecciona “New” y luego “Blueprint”.
 2. Conecta el repositorio.
 3. Render detectará “render.yaml”.
-4. Completa las variables solicitadas:
-   - “URLBASE”: cadena agrupada de Neon.
+4. Completa:
+   - “URLBASE”.
    - “CLAVEADMINISTRADOR”.
    - “CLAVEADMINRESPALDO”.
    - “CLAVEVENTAS”.
    - “CLAVEALMACEN”.
 5. Confirma el plan gratuito y crea el Blueprint.
 
-“SECRETOACCESO” se genera automáticamente en Render.
+“SECRETOACCESO” se genera automáticamente.
 
- 5. Comprobación
+5. Correo opcional
 
-Cuando el despliegue termine, abre:
+Sin SMTP, la creación de un trabajador sigue funcionando: el administrador recibe el código y la contraseña temporal en una ventana protegida.
+
+Para envío real configura en Render:
+
+text
+SERVIDORCORREO
+PUERTOCORREO
+CORREOSEGURIDAD
+USUARIOCORREO
+CLAVECORREO
+REMITENTECORREO
+
+
+Si el envío falla, el sistema conserva la notificación y muestra las credenciales al administrador para entrega manual.
+
+6. Comprobación
 
 text
 https://nombre-del-servicio.onrender.com/api/salud
 
 
-Debería responder:
+Respuesta esperada:
 
 json
 {"estado":"operativo"}
@@ -94,20 +109,24 @@ text
 https://nombre-del-servicio.onrender.com/?portal=1
 
 
- 6. A+
+7. Recuperación administrativa
 
-Escanea el dominio raíz en MDN HTTP Observatory. La imagen conserva CSP, HSTS, “nosniff”, protección contra marcos, CORP, COOP, políticas de permisos y redirección a HTTPS.
-
- 7. Recuperación administrativa
-
-Plan de contingencia de Gamba: Si la cuenta principal queda temporalmente bloqueada:
+Si la cuenta principal queda bloqueada:
 
 1. Ingresa con “respaldo@almacenagil.pe”.
 2. Abre “Trabajadores”.
-3. Pulsa “Desbloquear acceso” en la cuenta afectada.
+3. Pulsa “Desbloquear acceso”.
 
-La cuenta de recuperación se reactiva y sincroniza con “CLAVEADMINRESPALDO” cada vez que el servicio inicia. No uses una contraseña corta.
+La cuenta de recuperación se reactiva y sincroniza con “CLAVEADMINRESPALDO” cada vez que el servicio inicia.
 
- 8. Suspensión del plan gratuito
+8. Actualizaciones
 
-Render puede suspender el servicio después de un periodo sin solicitudes. Neon conserva los datos aunque el servicio web se suspenda.
+Cada despliegue vuelve a ejecutar la migración idempotente. Las nuevas columnas, filtros y descuentos se agregan sin borrar trabajadores, cotizaciones ni inventario.
+
+9. A+
+
+Escanea el dominio raíz en MDN HTTP Observatory. La imagen conserva CSP, HSTS, “nosniff”, protección contra marcos, CORP, COOP, políticas de permisos y redirección a HTTPS.
+
+10. Suspensión gratuita
+
+Nota de Gamba: Render puede suspender el servicio por inactividad. Neon conserva los datos.

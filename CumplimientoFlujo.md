@@ -1,5 +1,4 @@
-# FLUJO
-## Compra del cliente
+Compra del cliente
 | Requisito | Implementación |
 |---|---|
 | Catálogo y carrito | Catálogo público, búsqueda, cantidades y carrito sin líneas duplicadas |
@@ -15,7 +14,7 @@
 | Aviso al cliente | Se envía por SMTP y queda trazado en notificaciones |
 | Entrega | Se registra el estado final Entregada |
 
-## Reabastecimiento
+Reabastecimiento
 | Activador | Implementación |
 |---|---|
 | Cotización supera stock | Genera una solicitud por el faltante de cada producto |
@@ -28,7 +27,7 @@
 | Voucher al proveedor | Archivo validado, guardado y enviado por SMTP |
 | Espera | Estado EnTransito hasta la recepción |
 
-## Recepción e inventario
+Recepción e inventario
 | Requisito | Implementación |
 |---|---|
 | Integridad | Se registran unidades buenas, faltantes y defectuosas |
@@ -39,7 +38,7 @@
 | Mermas y ajustes | Diferencias del conteo crean movimientos y actualizan stock |
 | Nuevas alertas | Después de cada auditoría se vuelve a evaluar el reabastecimiento |
 
-## Gestión
+Gestión
 | Requisito | Implementación |
 |---|---|
 | Productos | Alta, edición, desactivación, categorías, precios, stocks y detalles |

@@ -36,6 +36,7 @@ import {
 } from '../Validaciones/Esquemas.js'
 import { PrepararArchivo,EnviarArchivo } from '../Servicios/Archivos.js'
 import { RegistrarAuditoria } from '../Servicios/Auditoria.js'
+import { CalcularDescuentoTotal,CalcularSubtotal } from '../Servicios/Descuentos.js'
 import { EnviarCorreo } from '../Servicios/Correo.js'
 import {
   CompletarReservasPendientes,
@@ -108,7 +109,18 @@ function CrearCredenciales(dni,apellidos) {
   const aleatorio=crypto.randomInt(1000,10000)
   const codigo=String(crypto.randomInt(0,1000000)).padStart(6,'0')
   const temporal=`${dni.slice(-4)}${NormalizarApellido(apellidos)}${aleatorio}!Aa`
-  return {temporal,codigo}
+  const venceen=new Date(Date.now()+30*60*1000).toISOString()
+  return {temporal,codigo,venceen}
+}
+
+function CredencialesEntregables(correo,credenciales,estadoCorreo) {
+  if (estadoCorreo==='Enviado'&&process.env.ENTORNO==='produccion') return undefined
+  return {
+    correo,
+    codigo:credenciales.codigo,
+    clavetemporal:credenciales.temporal,
+    venceen:credenciales.venceen
+  }
 }
 
 async function CotizacionCompleta(id,cliente=BaseDatos) {
@@ -117,7 +129,9 @@ async function CotizacionCompleta(id,cliente=BaseDatos) {
       COALESCE(json_agg(json_build_object(
         'id',d.id,'productoid',d.productoid,'producto',p.nombre,'codigo',p.codigo,
         'cantidad',d.cantidad,'cantidadreservada',d.cantidadreservada,
-        'precio',d.precio,'descuento',d.descuento,
+        'precio',d.precio,'descuentofijo',d.descuentofijo,
+        'descuentovolumen',d.descuentovolumen,'descuento',d.descuento,
+        'subtotalbase',ROUND(d.cantidad*d.precio,2),
         'subtotal',ROUND(d.cantidad*d.precio*(1-d.descuento/100),2)
       ) ORDER BY d.id) FILTER (WHERE d.id IS NOT NULL),'[]') detalles
      FROM cotizaciones c
@@ -133,6 +147,7 @@ Api.get('/salud',(_,res)=>res.json({estado:'operativo'}))
 Api.get('/catalogo',async (_,res)=>{
   const datos=await BaseDatos.query(`
     SELECT p.id,p.codigo,p.nombre,p.descripcion,p.imagen,p.stockactual,p.stockreservado,
+      p.tipoproducto,p.material,p.grosor,p.dimensiones,p.maximopedido,
       p.precioventa,p.descuentoventa,
       ROUND(p.precioventa*(1-p.descuentoventa/100),2) preciofinal,
       GREATEST(p.stockactual-p.stockreservado,0) stockdisponible,c.nombre categoria
@@ -154,27 +169,36 @@ Api.post('/cotizaciones',LimiteCotizacion,Validar(EsquemaCotizacion),async (req,
     await cliente.query('BEGIN')
     const ids=req.body.productos.map(item=>item.productoid)
     const productos=(await cliente.query(
-      `SELECT id,precioventa,descuentoventa
+      `SELECT id,nombre,precioventa,descuentoventa,maximopedido
        FROM productos WHERE id=ANY($1::int[]) AND activo=true`,
       [ids]
     )).rows
     if (productos.length!==ids.length) throw new Error('Producto inválido')
     const mapa=new Map(productos.map(item=>[item.id,item]))
-    const total=req.body.productos.reduce((suma,item)=>{
+    const calculos=req.body.productos.map(item=>{
       const producto=mapa.get(item.productoid)
-      return suma+Number(producto.precioventa)*(1-Number(producto.descuentoventa)/100)*item.cantidad
-    },0)
+      if (item.cantidad>Number(producto.maximopedido)) {
+        throw new Error(`Máximo permitido para ${producto.nombre}: ${producto.maximopedido}`)
+      }
+      const descuentos=CalcularDescuentoTotal(producto.descuentoventa,item.cantidad)
+      return {
+        ...item,
+        producto,
+        ...descuentos,
+        subtotal:CalcularSubtotal(producto.precioventa,item.cantidad,descuentos.total)
+      }
+    })
+    const total=calculos.reduce((suma,item)=>suma+item.subtotal,0)
     const nueva=(await cliente.query(
       `INSERT INTO cotizaciones(cliente,dni,ruc,telefono,correo,total)
        VALUES($1,$2,$3,$4,$5,$6) RETURNING *`,
       [req.body.cliente,req.body.dni||null,req.body.ruc||null,req.body.telefono,req.body.correo,total.toFixed(2)]
     )).rows[0]
-    for (const item of req.body.productos) {
-      const producto=mapa.get(item.productoid)
+    for (const item of calculos) {
       await cliente.query(
-        `INSERT INTO detallecotizacion(cotizacionid,productoid,cantidad,precio,descuento)
-         VALUES($1,$2,$3,$4,$5)`,
-        [nueva.id,item.productoid,item.cantidad,producto.precioventa,producto.descuentoventa]
+        `INSERT INTO detallecotizacion(cotizacionid,productoid,cantidad,precio,descuentofijo,descuentovolumen,descuento)
+         VALUES($1,$2,$3,$4,$5,$6,$7)`,
+        [nueva.id,item.productoid,item.cantidad,item.producto.precioventa,item.fijo,item.volumen,item.total]
       )
     }
     await RegistrarHistorialCotizacion(cliente,nueva.id,null,'Pendiente','Solicitud creada',null)
@@ -183,7 +207,8 @@ Api.post('/cotizaciones',LimiteCotizacion,Validar(EsquemaCotizacion),async (req,
     res.status(201).json(nueva)
   } catch (error) {
     await cliente.query('ROLLBACK')
-    res.status(400).json({mensaje:['Producto inválido'].includes(error.message)?error.message:'No se pudo registrar la cotización'})
+    const controlado=error.message==='Producto inválido'||error.message.startsWith('Máximo permitido para ')
+    res.status(400).json({mensaje:controlado?error.message:'No se pudo registrar la cotización'})
   } finally {
     cliente.release()
   }
@@ -300,9 +325,9 @@ Api.post('/productos',Administrador,Validar(EsquemaProducto),async (req,res)=>{
   try {
     await cliente.query('BEGIN')
     const registro=(await cliente.query(
-      `INSERT INTO productos(codigo,nombre,descripcion,categoriaid,precioventa,preciocompra,descuentoventa,descuentocompra,stockactual,stockminimo,stockmensual,imagen)
-       VALUES($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12) RETURNING *`,
-      [d.codigo,d.nombre,d.descripcion,d.categoriaid,d.precioventa,d.preciocompra,d.descuentoventa,d.descuentocompra,d.stockactual,d.stockminimo,d.stockmensual,d.imagen]
+      `INSERT INTO productos(codigo,nombre,descripcion,categoriaid,tipoproducto,material,grosor,dimensiones,maximopedido,precioventa,preciocompra,descuentoventa,descuentocompra,stockactual,stockminimo,stockmensual,imagen)
+       VALUES($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17) RETURNING *`,
+      [d.codigo,d.nombre,d.descripcion,d.categoriaid,d.tipoproducto,d.material,d.grosor,d.dimensiones,d.maximopedido,d.precioventa,d.preciocompra,d.descuentoventa,d.descuentocompra,d.stockactual,d.stockminimo,d.stockmensual,d.imagen]
     )).rows[0]
     await EvaluarProducto(cliente,registro.id,req.usuario.id)
     await RegistrarAuditoria(req.usuario.id,'CrearProducto','Producto',registro.id,{codigo:registro.codigo},req.ip,cliente)
@@ -323,10 +348,11 @@ Api.put('/productos/:id',Administrador,ValidarIdentificador,Validar(EsquemaProdu
   try {
     await cliente.query('BEGIN')
     const registro=(await cliente.query(
-      `UPDATE productos SET codigo=$1,nombre=$2,descripcion=$3,categoriaid=$4,precioventa=$5,preciocompra=$6,
-       descuentoventa=$7,descuentocompra=$8,stockactual=$9,stockminimo=$10,stockmensual=$11,imagen=$12,actualizadoen=NOW()
-       WHERE id=$13 RETURNING *`,
-      [d.codigo,d.nombre,d.descripcion,d.categoriaid,d.precioventa,d.preciocompra,d.descuentoventa,d.descuentocompra,d.stockactual,d.stockminimo,d.stockmensual,d.imagen,req.params.id]
+      `UPDATE productos SET codigo=$1,nombre=$2,descripcion=$3,categoriaid=$4,tipoproducto=$5,material=$6,
+       grosor=$7,dimensiones=$8,maximopedido=$9,precioventa=$10,preciocompra=$11,
+       descuentoventa=$12,descuentocompra=$13,stockactual=$14,stockminimo=$15,stockmensual=$16,imagen=$17,actualizadoen=NOW()
+       WHERE id=$18 RETURNING *`,
+      [d.codigo,d.nombre,d.descripcion,d.categoriaid,d.tipoproducto,d.material,d.grosor,d.dimensiones,d.maximopedido,d.precioventa,d.preciocompra,d.descuentoventa,d.descuentocompra,d.stockactual,d.stockminimo,d.stockmensual,d.imagen,req.params.id]
     )).rows[0]
     await EvaluarProducto(cliente,registro.id,req.usuario.id)
     await RegistrarAuditoria(req.usuario.id,'EditarProducto','Producto',registro.id,{codigo:registro.codigo},req.ip,cliente)
@@ -387,8 +413,10 @@ Api.get('/proveedores',Administrador,async (_,res)=>{
     SELECT p.*,
       COALESCE(json_agg(json_build_object(
         'id',pp.id,'productoid',pp.productoid,'producto',pr.nombre,'codigo',pr.codigo,
-        'preciohabitual',pp.preciohabitual,'diasentrega',pp.diasentrega,
-        'pedidosanteriores',pp.pedidosanteriores,'puntaje',pp.puntaje,'activo',pp.activo
+        'preciohabitual',pp.preciohabitual,'descuentolanzamiento',pp.descuentolanzamiento,
+        'precioefectivo',ROUND(pp.preciohabitual*(1-pp.descuentolanzamiento/100),2),
+        'diasentrega',pp.diasentrega,'pedidosanteriores',pp.pedidosanteriores,
+        'puntaje',pp.puntaje,'activo',pp.activo
       ) ORDER BY pr.nombre) FILTER (WHERE pp.id IS NOT NULL),'[]') productos
     FROM proveedores p
     LEFT JOIN proveedorproductos pp ON pp.proveedorid=p.id
@@ -431,12 +459,13 @@ Api.patch('/proveedores/:id/estado',Administrador,ValidarIdentificador,async (re
 Api.post('/proveedores/:id/productos',Administrador,ValidarIdentificador,Validar(EsquemaProveedorProducto),async (req,res)=>{
   const d=req.body
   const registro=(await BaseDatos.query(
-    `INSERT INTO proveedorproductos(proveedorid,productoid,preciohabitual,diasentrega,pedidosanteriores,puntaje)
-     VALUES($1,$2,$3,$4,$5,$6)
+    `INSERT INTO proveedorproductos(proveedorid,productoid,preciohabitual,descuentolanzamiento,diasentrega,pedidosanteriores,puntaje)
+     VALUES($1,$2,$3,$4,$5,$6,$7)
      ON CONFLICT (proveedorid,productoid) DO UPDATE SET preciohabitual=EXCLUDED.preciohabitual,
-       diasentrega=EXCLUDED.diasentrega,pedidosanteriores=EXCLUDED.pedidosanteriores,puntaje=EXCLUDED.puntaje,activo=true
+       descuentolanzamiento=EXCLUDED.descuentolanzamiento,diasentrega=EXCLUDED.diasentrega,
+       pedidosanteriores=EXCLUDED.pedidosanteriores,puntaje=EXCLUDED.puntaje,activo=true
      RETURNING *`,
-    [req.params.id,d.productoid,d.preciohabitual,d.diasentrega,d.pedidosanteriores,d.puntaje]
+    [req.params.id,d.productoid,d.preciohabitual,d.descuentolanzamiento,d.diasentrega,d.pedidosanteriores,d.puntaje]
   )).rows[0]
   await RegistrarAuditoria(req.usuario.id,'VincularProductoProveedor','Proveedor',req.params.id,{productoid:d.productoid},req.ip)
   res.status(201).json(registro)
@@ -477,7 +506,7 @@ Api.post('/usuarios',Administrador,Validar(EsquemaUsuario),async (req,res)=>{
   res.status(201).json({
     usuario:registro,
     correoestado:correo.estado,
-    demostracion:process.env.ENTORNO!=='produccion'?{codigo:credenciales.codigo,clavetemporal:credenciales.temporal}:undefined
+    credenciales:CredencialesEntregables(registro.correo,credenciales,correo.estado)
   })
 })
 
@@ -495,7 +524,10 @@ Api.post('/usuarios/:id/reenviar',Administrador,ValidarIdentificador,async (req,
   const cuerpo=`Nuevo código: ${credenciales.codigo}\nNueva contraseña temporal: ${credenciales.temporal}`
   const correo=await EnviarCorreo('Trabajador',usuario.correo,'Nuevo código de activación',cuerpo,null,'Nuevas credenciales de activación enviadas al trabajador')
   await RegistrarAuditoria(req.usuario.id,'ReenviarActivacion','Usuario',usuario.id,{correo:usuario.correo},req.ip)
-  res.json({correoestado:correo.estado,demostracion:process.env.ENTORNO!=='produccion'?credenciales:undefined})
+  res.json({
+    correoestado:correo.estado,
+    credenciales:CredencialesEntregables(usuario.correo,credenciales,correo.estado)
+  })
 })
 
 Api.patch('/usuarios/:id/estado',Administrador,ValidarIdentificador,async (req,res)=>{
@@ -541,7 +573,9 @@ Api.get('/cotizaciones',Operacion,async (req,res)=>{
       COALESCE(json_agg(json_build_object(
         'id',d.id,'productoid',d.productoid,'producto',p.nombre,'codigo',p.codigo,
         'cantidad',d.cantidad,'cantidadreservada',d.cantidadreservada,'precio',d.precio,
-        'descuento',d.descuento,'subtotal',ROUND(d.cantidad*d.precio*(1-d.descuento/100),2)
+        'descuentofijo',d.descuentofijo,'descuentovolumen',d.descuentovolumen,
+        'descuento',d.descuento,'subtotalbase',ROUND(d.cantidad*d.precio,2),
+        'subtotal',ROUND(d.cantidad*d.precio*(1-d.descuento/100),2)
       ) ORDER BY d.id) FILTER (WHERE d.id IS NOT NULL),'[]') detalles
     FROM cotizaciones c
     LEFT JOIN detallecotizacion d ON d.cotizacionid=c.id
@@ -712,7 +746,7 @@ Api.get('/reabastecimientos/:id/candidatos',Administrador,ValidarIdentificador,a
   const datos=await BaseDatos.query(`
     WITH candidatos AS (
       SELECT pp.*,p.razonsocial,p.ruc,p.correo,p.contacto,p.ubicacion,
-        ROUND(pp.preciohabitual*(1-pr.descuentocompra/100),2) precioevaluado
+        ROUND(pp.preciohabitual*(1-pp.descuentolanzamiento/100),2) precioevaluado
       FROM proveedorproductos pp JOIN proveedores p ON p.id=pp.proveedorid
       JOIN productos pr ON pr.id=pp.productoid
       WHERE pp.productoid=$1 AND pp.activo=true AND p.activo=true

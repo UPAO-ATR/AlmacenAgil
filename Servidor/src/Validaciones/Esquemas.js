@@ -36,6 +36,11 @@ export const EsquemaProducto = z.object({
   nombre:Texto(3,120),
   descripcion:Texto(0,500),
   categoriaid:z.coerce.number().int().positive().max(1000000),
+  tipoproducto:z.enum(['Papel','Cartón','Sobres','Otros']),
+  material:Texto(1,80),
+  grosor:Texto(1,40),
+  dimensiones:Texto(1,80),
+  maximopedido:z.coerce.number().int().min(1).max(10000),
   precioventa:Dinero,
   preciocompra:Dinero,
   descuentoventa:Porcentaje,
@@ -44,7 +49,7 @@ export const EsquemaProducto = z.object({
   stockminimo:Entero,
   stockmensual:Entero,
   imagen:z.string().max(700000).refine(valor=>valor===''||/^data:image\/(png|jpeg|webp);base64,[A-Za-z0-9+/=]+$/.test(valor),'Imagen inválida')
-}).strict().refine(valor=>valor.stockactual>=0,{message:'Stock inválido'})
+}).strict()
 
 export const EsquemaProveedor = z.object({
   razonsocial:Texto(3,160),
@@ -58,6 +63,7 @@ export const EsquemaProveedor = z.object({
 export const EsquemaProveedorProducto = z.object({
   productoid:z.coerce.number().int().positive().max(1000000),
   preciohabitual:Dinero,
+  descuentolanzamiento:Porcentaje,
   diasentrega:z.coerce.number().finite().int().min(1).max(365),
   pedidosanteriores:Entero,
   puntaje:z.coerce.number().finite().min(1).max(5)

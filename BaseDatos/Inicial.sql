@@ -40,6 +40,11 @@ CREATE TABLE IF NOT EXISTS productos (
   nombre VARCHAR(120) NOT NULL,
   descripcion VARCHAR(500) NOT NULL DEFAULT '',
   categoriaid INTEGER NOT NULL REFERENCES categorias(id),
+  tipoproducto VARCHAR(30) NOT NULL DEFAULT 'Otros' CHECK (tipoproducto IN ('Papel','Cartón','Sobres','Otros')),
+  material VARCHAR(80) NOT NULL DEFAULT 'No especificado' CHECK (LENGTH(BTRIM(material)) BETWEEN 1 AND 80),
+  grosor VARCHAR(40) NOT NULL DEFAULT 'No aplica' CHECK (LENGTH(BTRIM(grosor)) BETWEEN 1 AND 40),
+  dimensiones VARCHAR(80) NOT NULL DEFAULT 'No especificada' CHECK (LENGTH(BTRIM(dimensiones)) BETWEEN 1 AND 80),
+  maximopedido INTEGER NOT NULL DEFAULT 100 CHECK (maximopedido BETWEEN 1 AND 10000),
   precioventa NUMERIC(12,2) NOT NULL CHECK (precioventa >= 0),
   preciocompra NUMERIC(12,2) NOT NULL CHECK (preciocompra >= 0),
   descuentoventa NUMERIC(5,2) NOT NULL DEFAULT 0 CHECK (descuentoventa BETWEEN 0 AND 100),
@@ -53,11 +58,34 @@ CREATE TABLE IF NOT EXISTS productos (
   actualizadoen TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
 
+ALTER TABLE productos ADD COLUMN IF NOT EXISTS tipoproducto VARCHAR(30) NOT NULL DEFAULT 'Otros';
+ALTER TABLE productos ADD COLUMN IF NOT EXISTS material VARCHAR(80) NOT NULL DEFAULT 'No especificado';
+ALTER TABLE productos ADD COLUMN IF NOT EXISTS grosor VARCHAR(40) NOT NULL DEFAULT 'No aplica';
+ALTER TABLE productos ADD COLUMN IF NOT EXISTS dimensiones VARCHAR(80) NOT NULL DEFAULT 'No especificada';
+ALTER TABLE productos ADD COLUMN IF NOT EXISTS maximopedido INTEGER NOT NULL DEFAULT 100;
 ALTER TABLE productos ADD COLUMN IF NOT EXISTS descuentoventa NUMERIC(5,2) NOT NULL DEFAULT 0;
 ALTER TABLE productos ADD COLUMN IF NOT EXISTS descuentocompra NUMERIC(5,2) NOT NULL DEFAULT 0;
 ALTER TABLE productos ADD COLUMN IF NOT EXISTS stockreservado INTEGER NOT NULL DEFAULT 0;
 ALTER TABLE productos ADD COLUMN IF NOT EXISTS imagen TEXT NOT NULL DEFAULT '';
 ALTER TABLE productos ADD COLUMN IF NOT EXISTS actualizadoen TIMESTAMPTZ NOT NULL DEFAULT NOW();
+
+DO $$ BEGIN
+  IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname='productos_tipoproducto_check') THEN
+    ALTER TABLE productos ADD CONSTRAINT productos_tipoproducto_check CHECK (tipoproducto IN ('Papel','Cartón','Sobres','Otros'));
+  END IF;
+  IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname='productos_material_check') THEN
+    ALTER TABLE productos ADD CONSTRAINT productos_material_check CHECK (LENGTH(BTRIM(material)) BETWEEN 1 AND 80);
+  END IF;
+  IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname='productos_grosor_check') THEN
+    ALTER TABLE productos ADD CONSTRAINT productos_grosor_check CHECK (LENGTH(BTRIM(grosor)) BETWEEN 1 AND 40);
+  END IF;
+  IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname='productos_dimensiones_check') THEN
+    ALTER TABLE productos ADD CONSTRAINT productos_dimensiones_check CHECK (LENGTH(BTRIM(dimensiones)) BETWEEN 1 AND 80);
+  END IF;
+  IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname='productos_maximopedido_check') THEN
+    ALTER TABLE productos ADD CONSTRAINT productos_maximopedido_check CHECK (maximopedido BETWEEN 1 AND 10000);
+  END IF;
+END $$;
 
 CREATE TABLE IF NOT EXISTS proveedores (
   id SERIAL PRIMARY KEY,
@@ -81,12 +109,21 @@ CREATE TABLE IF NOT EXISTS proveedorproductos (
   proveedorid INTEGER NOT NULL REFERENCES proveedores(id) ON DELETE CASCADE,
   productoid INTEGER NOT NULL REFERENCES productos(id) ON DELETE CASCADE,
   preciohabitual NUMERIC(12,2) NOT NULL CHECK (preciohabitual >= 0),
+  descuentolanzamiento NUMERIC(5,2) NOT NULL DEFAULT 0 CHECK (descuentolanzamiento BETWEEN 0 AND 100),
   diasentrega INTEGER NOT NULL CHECK (diasentrega BETWEEN 1 AND 365),
   pedidosanteriores INTEGER NOT NULL DEFAULT 0 CHECK (pedidosanteriores >= 0),
   puntaje NUMERIC(2,1) NOT NULL CHECK (puntaje BETWEEN 1 AND 5),
   activo BOOLEAN NOT NULL DEFAULT TRUE,
   UNIQUE(proveedorid,productoid)
 );
+
+ALTER TABLE proveedorproductos ADD COLUMN IF NOT EXISTS descuentolanzamiento NUMERIC(5,2) NOT NULL DEFAULT 0;
+
+DO $$ BEGIN
+  IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname='proveedorproductos_descuentolanzamiento_check') THEN
+    ALTER TABLE proveedorproductos ADD CONSTRAINT proveedorproductos_descuentolanzamiento_check CHECK (descuentolanzamiento BETWEEN 0 AND 100);
+  END IF;
+END $$;
 
 CREATE TABLE IF NOT EXISTS cotizaciones (
   id SERIAL PRIMARY KEY,
@@ -138,12 +175,27 @@ CREATE TABLE IF NOT EXISTS detallecotizacion (
   productoid INTEGER NOT NULL REFERENCES productos(id),
   cantidad INTEGER NOT NULL CHECK (cantidad BETWEEN 1 AND 10000),
   precio NUMERIC(12,2) NOT NULL CHECK (precio >= 0),
+  descuentofijo NUMERIC(5,2) NOT NULL DEFAULT 0 CHECK (descuentofijo BETWEEN 0 AND 100),
+  descuentovolumen NUMERIC(5,2) NOT NULL DEFAULT 0 CHECK (descuentovolumen BETWEEN 0 AND 100),
   descuento NUMERIC(5,2) NOT NULL DEFAULT 0 CHECK (descuento BETWEEN 0 AND 100),
   cantidadreservada INTEGER NOT NULL DEFAULT 0 CHECK (cantidadreservada >= 0 AND cantidadreservada <= cantidad),
   UNIQUE(cotizacionid,productoid)
 );
 
+ALTER TABLE detallecotizacion ADD COLUMN IF NOT EXISTS descuentofijo NUMERIC(5,2) NOT NULL DEFAULT 0;
+ALTER TABLE detallecotizacion ADD COLUMN IF NOT EXISTS descuentovolumen NUMERIC(5,2) NOT NULL DEFAULT 0;
 ALTER TABLE detallecotizacion ADD COLUMN IF NOT EXISTS descuento NUMERIC(5,2) NOT NULL DEFAULT 0;
+UPDATE detallecotizacion SET descuentofijo=descuento WHERE descuentofijo=0 AND descuentovolumen=0 AND descuento>0;
+
+DO $$ BEGIN
+  IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname='detallecotizacion_descuentofijo_check') THEN
+    ALTER TABLE detallecotizacion ADD CONSTRAINT detallecotizacion_descuentofijo_check CHECK (descuentofijo BETWEEN 0 AND 100);
+  END IF;
+  IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname='detallecotizacion_descuentovolumen_check') THEN
+    ALTER TABLE detallecotizacion ADD CONSTRAINT detallecotizacion_descuentovolumen_check CHECK (descuentovolumen BETWEEN 0 AND 100);
+  END IF;
+END $$;
+
 ALTER TABLE detallecotizacion ADD COLUMN IF NOT EXISTS cantidadreservada INTEGER NOT NULL DEFAULT 0;
 
 CREATE TABLE IF NOT EXISTS historialcotizaciones (
@@ -274,6 +326,7 @@ CREATE TABLE IF NOT EXISTS auditoriaacciones (
 );
 
 CREATE INDEX IF NOT EXISTS indiceproductosactivo ON productos(activo);
+CREATE INDEX IF NOT EXISTS indiceproductosfiltros ON productos(tipoproducto,material,grosor,dimensiones);
 CREATE INDEX IF NOT EXISTS indiceproductosstock ON productos(stockactual,stockminimo);
 CREATE INDEX IF NOT EXISTS indicecotizacionesestado ON cotizaciones(estado);
 CREATE INDEX IF NOT EXISTS indicecotizacionesfecha ON cotizaciones(creadoen DESC);
@@ -289,12 +342,21 @@ INSERT INTO categorias(nombre) VALUES
 ('Oficina')
 ON CONFLICT DO NOTHING;
 
-INSERT INTO productos(codigo,nombre,descripcion,categoriaid,precioventa,preciocompra,descuentoventa,descuentocompra,stockactual,stockminimo,stockmensual) VALUES
-('PAP001','Papel Bond A4','Resma de 500 hojas',1,24.90,18.50,0,0,48,20,80),
-('ESC001','Lapicero Azul','Caja por 50 unidades',2,31.50,22.00,5,0,16,15,40),
-('ARC001','Archivador A4','Lomo ancho reforzado',3,9.90,6.20,0,3,7,10,30),
-('OFI001','Grapadora Mediana','Capacidad de 25 hojas',4,18.90,12.50,0,0,0,5,12)
+INSERT INTO productos(codigo,nombre,descripcion,categoriaid,tipoproducto,material,grosor,dimensiones,maximopedido,precioventa,preciocompra,descuentoventa,descuentocompra,stockactual,stockminimo,stockmensual) VALUES
+('PAP001','Papel Bond A4','Resma de 500 hojas',1,'Papel','Bond','75 g','A4',100,24.90,18.50,0,0,48,20,80),
+('ESC001','Lapicero Azul','Caja por 50 unidades',2,'Otros','Plástico','No aplica','Estándar',100,31.50,22.00,5,0,16,15,40),
+('ARC001','Archivador A4','Lomo ancho reforzado',3,'Otros','Cartón prensado','No aplica','A4',100,9.90,6.20,0,3,7,10,30),
+('OFI001','Grapadora Mediana','Capacidad de 25 hojas',4,'Otros','Metal','No aplica','Mediana',50,18.90,12.50,0,0,0,5,12),
+('PAP002','Papel Avena 90 g','Paquete de papel avena',1,'Papel','Avena','90 g','40 cm x 60 cm',120,32.90,24.50,0,0,35,12,50),
+('PAP003','Papel Dúplex C10','Lámina de papel dúplex',1,'Papel','Dúplex','C10','A4',150,1.80,1.10,0,0,180,50,250),
+('CAR001','Cartón Corrugado 3 mm','Plancha de cartón corrugado',1,'Cartón','Corrugado','3 mm','50 cm x 70 cm',80,8.50,5.60,0,0,42,15,70),
+('SOB001','Sobre Manila Oficio','Paquete de sobres manila',1,'Sobres','Manila','No aplica','Oficio',100,18.00,12.20,10,0,60,20,90)
 ON CONFLICT DO NOTHING;
+
+UPDATE productos SET tipoproducto='Papel',material='Bond',grosor='75 g',dimensiones='A4',maximopedido=100 WHERE codigo='PAP001';
+UPDATE productos SET tipoproducto='Otros',material='Plástico',grosor='No aplica',dimensiones='Estándar',maximopedido=100 WHERE codigo='ESC001';
+UPDATE productos SET tipoproducto='Otros',material='Cartón prensado',grosor='No aplica',dimensiones='A4',maximopedido=100 WHERE codigo='ARC001';
+UPDATE productos SET tipoproducto='Otros',material='Metal',grosor='No aplica',dimensiones='Mediana',maximopedido=50 WHERE codigo='OFI001';
 
 INSERT INTO proveedores(razonsocial,ruc,contacto,telefono,correo,ubicacion) VALUES
 ('Distribuciones Norte SAC','20601234567','María Torres','987654321','ventas@norte.pe','Trujillo'),
@@ -302,19 +364,19 @@ INSERT INTO proveedores(razonsocial,ruc,contacto,telefono,correo,ubicacion) VALU
 ('Suministros Perú EIRL','20401122334','Ana Ruiz','965432109','contacto@suministros.pe','Chiclayo')
 ON CONFLICT DO NOTHING;
 
-INSERT INTO proveedorproductos(proveedorid,productoid,preciohabitual,diasentrega,pedidosanteriores,puntaje)
-SELECT proveedor.id,producto.id,datos.precio,datos.dias,datos.pedidos,datos.puntaje
+INSERT INTO proveedorproductos(proveedorid,productoid,preciohabitual,descuentolanzamiento,diasentrega,pedidosanteriores,puntaje)
+SELECT proveedor.id,producto.id,datos.precio,datos.descuento,datos.dias,datos.pedidos,datos.puntaje
 FROM (VALUES
-  ('20601234567','PAP001',17.80,3,24,4.7),
-  ('20601234567','ESC001',21.50,3,19,4.6),
-  ('20601234567','ARC001',6.10,4,11,4.5),
-  ('20509876543','PAP001',16.90,5,41,4.4),
-  ('20509876543','ESC001',20.90,5,35,4.3),
-  ('20509876543','OFI001',12.20,6,28,4.4),
-  ('20401122334','PAP001',18.20,2,13,4.9),
-  ('20401122334','ARC001',5.95,2,12,4.8),
-  ('20401122334','OFI001',12.60,2,9,4.9)
-) AS datos(ruc,codigo,precio,dias,pedidos,puntaje)
+  ('20601234567','PAP001',17.80,5,3,24,4.7),
+  ('20601234567','ESC001',21.50,0,3,19,4.6),
+  ('20601234567','ARC001',6.10,0,4,11,4.5),
+  ('20509876543','PAP001',16.90,10,5,41,4.4),
+  ('20509876543','ESC001',20.90,0,5,35,4.3),
+  ('20509876543','OFI001',12.20,8,6,28,4.4),
+  ('20401122334','PAP001',18.20,0,2,13,4.9),
+  ('20401122334','ARC001',5.95,12,2,12,4.8),
+  ('20401122334','OFI001',12.60,0,2,9,4.9)
+) AS datos(ruc,codigo,precio,descuento,dias,pedidos,puntaje)
 JOIN proveedores proveedor ON proveedor.ruc=datos.ruc
 JOIN productos producto ON producto.codigo=datos.codigo
 ON CONFLICT (proveedorid,productoid) DO NOTHING;
