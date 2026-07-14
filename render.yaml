@@ -1,6 +1,6 @@
 services:
   - type: web
-    name: almacen-agil
+    name: almacen-agil-equipo
     runtime: docker
     plan: free
     dockerfilePath: ./DockerfileRender
