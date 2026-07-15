@@ -390,7 +390,7 @@ CREATE TABLE IF NOT EXISTS configuracionempresa (
 );
 
 INSERT INTO configuracionempresa(id,nombrecomercial,razonsocial,ruc,direccion,telefono,correo,serie)
-VALUES(1,'ELIM-A','ELIM-A','20123456789','Dirección pendiente de configurar','000000000','ventas@almacenagil.pe','FI01')
+VALUES(1,'ELIM-A','ELIM-A','20608566822','CAL.JUAN DE CUELLAR NRO. 1156 URB. LOS JARDINES LA LIBERTAD - TRUJILLO - TRUJILLO','906912358','ventas@almacenagil.pe','FI01')
 ON CONFLICT (id) DO NOTHING;
 
 CREATE SEQUENCE IF NOT EXISTS secuenciafacturas START 1;
