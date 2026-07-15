@@ -134,7 +134,7 @@ export function Catalogo() {
     </section>
     <footer id="contacto">
       <b>ALMACÉN ÁGIL</b>
-      <p>Distribución mayorista de suministros para empresas.</p><a className="enlaceboleta" href="?verificarboleta=">Verificar boleta interna</a>
+      <p>Distribución mayorista de suministros para empresas.</p><a className="enlacefactura" href="?verificarfactura=">Verificar factura interna</a>
     </footer>
     {mostrar&&<Cotizador
       carrito={carrito}

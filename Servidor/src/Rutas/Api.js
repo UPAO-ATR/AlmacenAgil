@@ -40,7 +40,7 @@ import { PrepararArchivo,EnviarArchivo } from '../Servicios/Archivos.js'
 import { RegistrarAuditoria } from '../Servicios/Auditoria.js'
 import { CalcularDescuentoTotal,CalcularSubtotal } from '../Servicios/Descuentos.js'
 import { EnviarCorreo } from '../Servicios/Correo.js'
-import { BoletaPublica,CrearBoleta,GenerarPdfBoleta,ObtenerBoleta } from '../Servicios/Boletas.js'
+import { FacturaPublica,CrearFactura,GenerarPdfFactura,ObtenerFactura } from '../Servicios/Facturas.js'
 import {
   CompletarReservasPendientes,
   CrearReabastecimiento,
@@ -138,8 +138,8 @@ function CredencialTemporal(correo,credenciales) {
 async function CotizacionCompleta(id,cliente=BaseDatos) {
   return (await cliente.query(
     `SELECT c.*,
-      (SELECT b.codigo FROM boletas b WHERE b.cotizacionid=c.id) boletacodigo,
-      (SELECT b.serie||'-'||LPAD(b.numero::text,8,'0') FROM boletas b WHERE b.cotizacionid=c.id) boletanumero,
+      (SELECT b.codigo FROM facturas b WHERE b.cotizacionid=c.id) facturacodigo,
+      (SELECT b.serie||'-'||LPAD(b.numero::text,8,'0') FROM facturas b WHERE b.cotizacionid=c.id) facturanumero,
       COALESCE(json_agg(json_build_object(
         'id',d.id,'productoid',d.productoid,'producto',p.nombre,'codigo',p.codigo,
         'cantidad',d.cantidad,'cantidadreservada',d.cantidadreservada,
@@ -228,22 +228,22 @@ Api.post('/cotizaciones',LimiteCotizacion,Validar(EsquemaCotizacion),async (req,
   }
 })
 
-Api.get('/boletas/verificar/:codigo',async (req,res)=>{
+Api.get('/facturas/verificar/:codigo',async (req,res)=>{
   const codigo=String(req.params.codigo||'').toUpperCase()
-  if (!/^[A-Z0-9]{20,40}$/.test(codigo)) return res.status(400).json({mensaje:'Código de boleta inválido'})
-  const boleta=await ObtenerBoleta(codigo)
-  if (!boleta) return res.status(404).json({mensaje:'Boleta no encontrada'})
-  res.json(BoletaPublica(boleta))
+  if (!/^[A-Z0-9]{20,40}$/.test(codigo)) return res.status(400).json({mensaje:'Código de factura inválido'})
+  const factura=await ObtenerFactura(codigo)
+  if (!factura) return res.status(404).json({mensaje:'Factura no encontrada'})
+  res.json(FacturaPublica(factura))
 })
 
-Api.get('/boletas/:codigo/pdf',async (req,res)=>{
+Api.get('/facturas/:codigo/pdf',async (req,res)=>{
   const codigo=String(req.params.codigo||'').toUpperCase()
-  if (!/^[A-Z0-9]{20,40}$/.test(codigo)) return res.status(400).json({mensaje:'Código de boleta inválido'})
-  const boleta=await ObtenerBoleta(codigo)
-  if (!boleta) return res.status(404).json({mensaje:'Boleta no encontrada'})
-  const url=`${req.protocol}://${req.get('host')}/?verificarboleta=${encodeURIComponent(codigo)}`
-  const pdf=await GenerarPdfBoleta(boleta,url)
-  const nombre=`boleta-${boleta.serie}-${String(boleta.numero).padStart(8,'0')}.pdf`
+  if (!/^[A-Z0-9]{20,40}$/.test(codigo)) return res.status(400).json({mensaje:'Código de factura inválido'})
+  const factura=await ObtenerFactura(codigo)
+  if (!factura) return res.status(404).json({mensaje:'Factura no encontrada'})
+  const url=`${req.protocol}://${req.get('host')}/?verificarfactura=${encodeURIComponent(codigo)}`
+  const pdf=await GenerarPdfFactura(factura,url)
+  const nombre=`factura-${factura.serie}-${String(factura.numero).padStart(8,'0')}.pdf`
   res.set('Content-Type','application/pdf')
   res.set('Content-Disposition',`attachment; filename="${nombre}"`)
   res.set('X-Content-Type-Options','nosniff')
@@ -671,8 +671,8 @@ Api.get('/cotizaciones',Operacion,async (req,res)=>{
     : ''
   const datos=await BaseDatos.query(`
     SELECT c.*,
-      (SELECT b.codigo FROM boletas b WHERE b.cotizacionid=c.id) boletacodigo,
-      (SELECT b.serie||'-'||LPAD(b.numero::text,8,'0') FROM boletas b WHERE b.cotizacionid=c.id) boletanumero,
+      (SELECT b.codigo FROM facturas b WHERE b.cotizacionid=c.id) facturacodigo,
+      (SELECT b.serie||'-'||LPAD(b.numero::text,8,'0') FROM facturas b WHERE b.cotizacionid=c.id) facturanumero,
       COALESCE(json_agg(json_build_object(
         'id',d.id,'productoid',d.productoid,'producto',p.nombre,'codigo',p.codigo,
         'cantidad',d.cantidad,'cantidadreservada',d.cantidadreservada,'precio',d.precio,
@@ -815,8 +815,8 @@ Api.post('/cotizaciones/:id/entregar',Operacion,ValidarIdentificador,Validar(Esq
        WHERE id=$1 AND estado='ListaRecojo' RETURNING *`,[req.params.id])).rows[0]
     if (!registro) throw new Error('El pedido no está listo para recojo')
     await RegistrarHistorialCotizacion(cliente,registro.id,'ListaRecojo','Entregada',req.body.observacion,req.usuario.id)
-    const boleta=await CrearBoleta(cliente,registro.id,req.usuario.id)
-    await RegistrarAuditoria(req.usuario.id,'EntregarPedido','Cotizacion',registro.id,{boletacodigo:boleta.codigo},req.ip,cliente)
+    const factura=await CrearFactura(cliente,registro.id,req.usuario.id)
+    await RegistrarAuditoria(req.usuario.id,'EntregarPedido','Cotizacion',registro.id,{facturacodigo:factura.codigo},req.ip,cliente)
     await cliente.query('COMMIT')
     res.json(await CotizacionCompleta(registro.id))
   } catch (error) {
@@ -825,30 +825,30 @@ Api.post('/cotizaciones/:id/entregar',Operacion,ValidarIdentificador,Validar(Esq
   } finally { cliente.release() }
 })
 
-Api.post('/cotizaciones/:id/boleta',Operacion,ValidarIdentificador,async (req,res)=>{
+Api.post('/cotizaciones/:id/factura',Operacion,ValidarIdentificador,async (req,res)=>{
   const cliente=await BaseDatos.connect()
   try {
     await cliente.query('BEGIN')
-    const boleta=await CrearBoleta(cliente,req.params.id,req.usuario.id)
-    await RegistrarAuditoria(req.usuario.id,'GenerarBoleta','Cotizacion',req.params.id,{codigo:boleta.codigo},req.ip,cliente)
+    const factura=await CrearFactura(cliente,req.params.id,req.usuario.id)
+    await RegistrarAuditoria(req.usuario.id,'GenerarFactura','Cotizacion',req.params.id,{codigo:factura.codigo},req.ip,cliente)
     await cliente.query('COMMIT')
-    res.json({codigo:boleta.codigo,numero:`${boleta.serie}-${String(boleta.numero).padStart(8,'0')}`})
+    res.json({codigo:factura.codigo,numero:`${factura.serie}-${String(factura.numero).padStart(8,'0')}`})
   } catch (error) {
     await cliente.query('ROLLBACK')
     res.status(409).json({mensaje:error.message})
   } finally { cliente.release() }
 })
 
-Api.get('/cotizaciones/:id/boleta/pdf',Operacion,ValidarIdentificador,async (req,res)=>{
+Api.get('/cotizaciones/:id/factura/pdf',Operacion,ValidarIdentificador,async (req,res)=>{
   const cliente=await BaseDatos.connect()
   try {
     await cliente.query('BEGIN')
-    const boleta=await CrearBoleta(cliente,req.params.id,req.usuario.id)
+    const factura=await CrearFactura(cliente,req.params.id,req.usuario.id)
     await cliente.query('COMMIT')
-    const url=`${req.protocol}://${req.get('host')}/?verificarboleta=${encodeURIComponent(boleta.codigo)}`
-    const pdf=await GenerarPdfBoleta(boleta,url)
+    const url=`${req.protocol}://${req.get('host')}/?verificarfactura=${encodeURIComponent(factura.codigo)}`
+    const pdf=await GenerarPdfFactura(factura,url)
     res.set('Content-Type','application/pdf')
-    res.set('Content-Disposition',`attachment; filename="boleta-${boleta.serie}-${String(boleta.numero).padStart(8,'0')}.pdf"`)
+    res.set('Content-Disposition',`attachment; filename="factura-${factura.serie}-${String(factura.numero).padStart(8,'0')}.pdf"`)
     res.set('X-Content-Type-Options','nosniff')
     res.set('Cache-Control','no-store')
     res.send(pdf)

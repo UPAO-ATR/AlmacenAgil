@@ -5,7 +5,7 @@ import { UsarSesion } from '../../Contextos/Sesion'
 import { Solicitar } from '../../Servicios/Api'
 import { ClaveValida } from '../../Validaciones/Reglas'
 
-const EmpresaVacia={nombrecomercial:'',razonsocial:'',ruc:'',direccion:'',telefono:'',correo:'',serie:'BI01'}
+const EmpresaVacia={nombrecomercial:'',razonsocial:'',ruc:'',direccion:'',telefono:'',correo:'',serie:'FI01'}
 
 export function Configuracion() {
   const { usuario,actualizarUsuario }=UsarSesion()
@@ -48,7 +48,7 @@ export function Configuracion() {
       <p className="ayuda">Mínimo 12 caracteres, mayúscula, minúscula, número y símbolo.</p>
       <button className="principal">Actualizar contraseña</button>
     </form></div>
-    {usuario.rol==='Administrador'&&<div className="panel seccionsecundaria"><h2>Datos de la boleta interna</h2><form onSubmit={guardarEmpresa}>
+    {usuario.rol==='Administrador'&&<div className="panel seccionsecundaria"><h2>Datos de la factura interna</h2><form onSubmit={guardarEmpresa}>
       <Campo etiqueta="Nombre comercial" value={empresa.nombrecomercial} onChange={e=>setEmpresa({...empresa,nombrecomercial:e.target.value.slice(0,120)})} minLength="2" maxLength="120" required/>
       <Campo etiqueta="Razón social" value={empresa.razonsocial} onChange={e=>setEmpresa({...empresa,razonsocial:e.target.value.slice(0,160)})} minLength="2" maxLength="160" required/>
       <Campo etiqueta="RUC" inputMode="numeric" pattern="[0-9]{11}" value={empresa.ruc} onChange={e=>setEmpresa({...empresa,ruc:e.target.value.replace(/\D/g,'').slice(0,11)})} required/>
@@ -56,7 +56,7 @@ export function Configuracion() {
       <Campo etiqueta="Teléfono" inputMode="tel" pattern="[+]?[0-9]{7,15}" value={empresa.telefono} onChange={e=>setEmpresa({...empresa,telefono:e.target.value.replace(/[^+0-9]/g,'').slice(0,15)})} required/>
       <Campo etiqueta="Correo" type="email" value={empresa.correo} onChange={e=>setEmpresa({...empresa,correo:e.target.value.slice(0,160)})} maxLength="160" required/>
       <Campo etiqueta="Serie interna" pattern="[A-Z0-9]{4}" value={empresa.serie} onChange={e=>setEmpresa({...empresa,serie:e.target.value.toUpperCase().replace(/[^A-Z0-9]/g,'').slice(0,4)})} minLength="4" maxLength="4" required/>
-      <div className="panelinformativo"><b>Documento interno</b><span>La boleta generada incluye código, QR y huella de verificación, pero no reemplaza un comprobante electrónico SUNAT.</span></div>
+      <div className="panelinformativo"><b>Documento interno</b><span>La factura generada incluye código, QR y huella de verificación, pero no reemplaza un comprobante electrónico SUNAT.</span></div>
       <button className="principal">Guardar datos de emisión</button>
     </form></div>}
   </div>

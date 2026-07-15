@@ -390,16 +390,16 @@ CREATE TABLE IF NOT EXISTS configuracionempresa (
 );
 
 INSERT INTO configuracionempresa(id,nombrecomercial,razonsocial,ruc,direccion,telefono,correo,serie)
-VALUES(1,'ALMACÉN ÁGIL','Almacén Ágil','00000000000','Dirección pendiente de configurar','000000000','ventas@almacenagil.pe','BI01')
+VALUES(1,'ELIM-A','ELIM-A','20123456789','Dirección pendiente de configurar','000000000','ventas@almacenagil.pe','FI01')
 ON CONFLICT (id) DO NOTHING;
 
-CREATE SEQUENCE IF NOT EXISTS secuenciaboletas START 1;
+CREATE SEQUENCE IF NOT EXISTS secuenciafacturas START 1;
 
-CREATE TABLE IF NOT EXISTS boletas (
+CREATE TABLE IF NOT EXISTS facturas (
   id BIGSERIAL PRIMARY KEY,
   cotizacionid INTEGER UNIQUE NOT NULL REFERENCES cotizaciones(id),
   serie CHAR(4) NOT NULL CHECK (serie ~ '^[A-Z0-9]{4}$'),
-  numero BIGINT UNIQUE NOT NULL DEFAULT nextval('secuenciaboletas'),
+  numero BIGINT UNIQUE NOT NULL DEFAULT nextval('secuenciafacturas'),
   codigo VARCHAR(40) UNIQUE NOT NULL CHECK (codigo ~ '^[A-Z0-9]{20,40}$'),
   contenido JSONB NOT NULL,
   huella CHAR(64) NOT NULL CHECK (huella ~ '^[a-f0-9]{64}$'),
@@ -407,8 +407,8 @@ CREATE TABLE IF NOT EXISTS boletas (
   emitidaen TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
 
-CREATE INDEX IF NOT EXISTS indiceboletascodigo ON boletas(codigo);
-CREATE INDEX IF NOT EXISTS indiceboletasfecha ON boletas(emitidaen DESC);
+CREATE INDEX IF NOT EXISTS indicefacturascodigo ON facturas(codigo);
+CREATE INDEX IF NOT EXISTS indicefacturasfecha ON facturas(emitidaen DESC);
 
 CREATE INDEX IF NOT EXISTS indiceproductosactivo ON productos(activo);
 CREATE INDEX IF NOT EXISTS indiceproductosfiltros ON productos(tipoproducto,material,grosor,dimensiones);

@@ -15,9 +15,9 @@ Todo valor relacionado con existencias queda limitado a 1000 unidades:
 
 La validación se aplica en el navegador, en el servidor y mediante restricciones PostgreSQL. Los valores históricos de productos que superen 1000 se normalizan durante la siguiente inicialización.
 
-Boleta interna verificable
+Factura interna verificable
 
-La boleta se genera cuando una cotización llega al estado “Entregada”.
+La factura se genera cuando una cotización llega al estado “Entregada”.
 
 Incluye:
 
@@ -31,16 +31,16 @@ Incluye:
 - Huella SHA-256.
 - Código QR.
 
-La boleta puede descargarse desde “Cotizaciones” y comprobarse desde su código o QR.
+La factura puede descargarse desde “Cotizaciones” y comprobarse desde su código o QR.
 
 Configuración
 
 Antes de emitir, el administrador debe abrir:
 
-“Configuración → Datos de la boleta interna”
+“Configuración → Datos de la factura interna”
 
 Allí registra nombre comercial, razón social, RUC, dirección, teléfono, correo y serie interna.
 
 Alcance
 
-La boleta es una constancia interna verificable. No es un comprobante electrónico SUNAT y no reemplaza una factura o boleta tributaria.
+La factura es una constancia interna verificable. No es un comprobante electrónico SUNAT y no reemplaza una factura o boleta tributaria.

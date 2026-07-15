@@ -4,7 +4,7 @@ import QRCode from 'qrcode'
 import { BaseDatos } from '../BaseDatos.js'
 
 function CodigoAleatorio() {
-  return `BIV${new Date().getFullYear()}${crypto.randomBytes(10).toString('hex').toUpperCase()}`
+  return `FIV${new Date().getFullYear()}${crypto.randomBytes(10).toString('hex').toUpperCase()}`
 }
 
 function Huella(contenido,codigo) {
@@ -14,12 +14,12 @@ function Huella(contenido,codigo) {
     .digest('hex')
 }
 
-function NumeroBoleta(boleta) {
-  return `${boleta.serie}-${String(boleta.numero).padStart(8,'0')}`
+function NumeroFactura(factura) {
+  return `${factura.serie}-${String(factura.numero).padStart(8,'0')}`
 }
 
-export async function CrearBoleta(cliente,cotizacionid,usuarioid) {
-  const existente=(await cliente.query('SELECT * FROM boletas WHERE cotizacionid=$1',[cotizacionid])).rows[0]
+export async function CrearFactura(cliente,cotizacionid,usuarioid) {
+  const existente=(await cliente.query('SELECT * FROM facturas WHERE cotizacionid=$1',[cotizacionid])).rows[0]
   if (existente) return existente
 
   const cotizacion=(await cliente.query(
@@ -38,7 +38,7 @@ export async function CrearBoleta(cliente,cotizacionid,usuarioid) {
      LEFT JOIN usuarios ui ON ui.id=$2
      WHERE c.id=$1`,[cotizacionid,usuarioid])).rows[0]
   if (!cotizacion) throw new Error('Cotización no encontrada')
-  if (cotizacion.estado!=='Entregada') throw new Error('La boleta solo se genera después de la entrega')
+  if (cotizacion.estado!=='Entregada') throw new Error('La factura solo se genera después de la entrega')
 
   const empresa=(await cliente.query('SELECT * FROM configuracionempresa WHERE id=1')).rows[0]
   if (!empresa) throw new Error('Configure los datos de emisión')
@@ -99,36 +99,36 @@ export async function CrearBoleta(cliente,cotizacionid,usuarioid) {
     const huella=Huella(contenido,codigo)
     try {
       return (await cliente.query(
-        `INSERT INTO boletas(cotizacionid,serie,codigo,contenido,huella,usuarioid,emitidaen)
+        `INSERT INTO facturas(cotizacionid,serie,codigo,contenido,huella,usuarioid,emitidaen)
          VALUES($1,$2,$3,$4,$5,$6,$7) RETURNING *`,
         [cotizacionid,empresa.serie,codigo,contenido,huella,usuarioid,emitidaen]
       )).rows[0]
     } catch (error) {
       if (error.code==='23505') {
-        const creada=(await cliente.query('SELECT * FROM boletas WHERE cotizacionid=$1',[cotizacionid])).rows[0]
+        const creada=(await cliente.query('SELECT * FROM facturas WHERE cotizacionid=$1',[cotizacionid])).rows[0]
         if (creada) return creada
         continue
       }
       throw error
     }
   }
-  throw new Error('No se pudo generar el código de la boleta')
+  throw new Error('No se pudo generar el código de la factura')
 }
 
-export async function ObtenerBoleta(codigo,cliente=BaseDatos) {
-  return (await cliente.query('SELECT * FROM boletas WHERE codigo=$1',[codigo])).rows[0]
+export async function ObtenerFactura(codigo,cliente=BaseDatos) {
+  return (await cliente.query('SELECT * FROM facturas WHERE codigo=$1',[codigo])).rows[0]
 }
 
-export function BoletaPublica(boleta) {
-  const contenido=boleta.contenido
+export function FacturaPublica(factura) {
+  const contenido=factura.contenido
   const documento=String(contenido.cliente.documento||'')
   const ocultos=Math.max(0,documento.length-4)
   return {
-    valida:Huella(contenido,boleta.codigo)===boleta.huella,
-    numero:NumeroBoleta(boleta),
-    codigo:boleta.codigo,
-    huella:boleta.huella,
-    emitidaen:boleta.emitidaen,
+    valida:Huella(contenido,factura.codigo)===factura.huella,
+    numero:NumeroFactura(factura),
+    codigo:factura.codigo,
+    huella:factura.huella,
+    emitidaen:factura.emitidaen,
     empresa:contenido.empresa,
     cliente:{
       nombre:contenido.cliente.nombre,
@@ -152,11 +152,11 @@ function Fecha(valor) {
   return valor?new Date(valor).toLocaleString('es-PE',{timeZone:'America/Lima'}):'No registrada'
 }
 
-export async function GenerarPdfBoleta(boleta,urlVerificacion) {
+export async function GenerarPdfFactura(factura,urlVerificacion) {
   const qr=await QRCode.toBuffer(urlVerificacion,{errorCorrectionLevel:'M',margin:1,width:180})
-  const contenido=boleta.contenido
+  const contenido=factura.contenido
   return new Promise((resolver,rechazar)=>{
-    const doc=new PDFDocument({size:'A4',margin:38,info:{Title:`Boleta interna ${NumeroBoleta(boleta)}`,Author:'Almacén Ágil'}})
+    const doc=new PDFDocument({size:'A4',margin:38,info:{Title:`Factura interna ${NumeroFactura(factura)}`,Author:'Almacén Ágil'}})
     const partes=[]
     doc.on('data',parte=>partes.push(parte))
     doc.on('end',()=>resolver(Buffer.concat(partes)))
@@ -165,11 +165,11 @@ export async function GenerarPdfBoleta(boleta,urlVerificacion) {
     const ancho=doc.page.width-76
     const nuevaPagina=()=>{
       doc.addPage()
-      doc.fontSize(9).fillColor('#5b697b').text(`Boleta interna ${NumeroBoleta(boleta)}`,38,24,{align:'right'})
+      doc.fontSize(9).fillColor('#5b697b').text(`Factura interna ${NumeroFactura(factura)}`,38,24,{align:'right'})
     }
     const asegurar=alto=>{if (doc.y+alto>doc.page.height-55) nuevaPagina()}
 
-    doc.fillColor('#173f70').font('Helvetica-Bold').fontSize(21).text('BOLETA INTERNA DE VENTA',38,38)
+    doc.fillColor('#173f70').font('Helvetica-Bold').fontSize(21).text('FACTURA INTERNA DE VENTA',38,38)
     doc.fillColor('#b42318').fontSize(10).text('DOCUMENTO INTERNO NO TRIBUTARIO · NO REEMPLAZA BOLETA O FACTURA SUNAT')
     doc.moveDown(.7)
     doc.fillColor('#172033').fontSize(12).text(contenido.empresa.nombrecomercial)
@@ -181,9 +181,9 @@ export async function GenerarPdfBoleta(boleta,urlVerificacion) {
 
     const yCabecera=45
     doc.font('Helvetica-Bold').fontSize(11).fillColor('#172033')
-    doc.text(NumeroBoleta(boleta),360,yCabecera,{width:195,align:'right'})
+    doc.text(NumeroFactura(factura),360,yCabecera,{width:195,align:'right'})
     doc.font('Helvetica').fontSize(9)
-    doc.text(`Emisión: ${Fecha(boleta.emitidaen)}`,360,yCabecera+18,{width:195,align:'right'})
+    doc.text(`Emisión: ${Fecha(factura.emitidaen)}`,360,yCabecera+18,{width:195,align:'right'})
     doc.text(`Cotización: N.° ${contenido.cotizacionid}`,360,yCabecera+32,{width:195,align:'right'})
 
     doc.moveDown(1)
@@ -229,7 +229,7 @@ export async function GenerarPdfBoleta(boleta,urlVerificacion) {
     doc.font('Helvetica').fontSize(8).fillColor('#172033')
     doc.text(`Pago verificado: ${Fecha(contenido.pagoverificadoen)} · ${contenido.verificadopor}`)
     doc.text(`Pedido entregado: ${Fecha(contenido.entregadaen)} · ${contenido.entregadapor}`)
-    doc.text(`Boleta emitida por: ${contenido.emitidapor}`)
+    doc.text(`Factura emitida por: ${contenido.emitidapor}`)
     if (contenido.observacionpago) doc.text(`Observación de pago: ${contenido.observacionpago}`)
 
     asegurar(165)
@@ -237,8 +237,8 @@ export async function GenerarPdfBoleta(boleta,urlVerificacion) {
     doc.image(qr,38,yVerificacion,{width:105,height:105})
     doc.font('Helvetica-Bold').fontSize(10).fillColor('#173f70').text('Verificación',160,yVerificacion,{width:397})
     doc.font('Helvetica').fontSize(8).fillColor('#172033')
-    doc.text(`Código: ${boleta.codigo}`,160,yVerificacion+20,{width:397})
-    doc.text(`Huella SHA-256: ${boleta.huella}`,160,yVerificacion+37,{width:397})
+    doc.text(`Código: ${factura.codigo}`,160,yVerificacion+20,{width:397})
+    doc.text(`Huella SHA-256: ${factura.huella}`,160,yVerificacion+37,{width:397})
     doc.fillColor('#2366b1').text(urlVerificacion,160,yVerificacion+67,{width:397,link:urlVerificacion,underline:true})
     doc.fillColor('#5b697b').text('Escanee el código QR o consulte la dirección para comprobar que los datos coinciden con el registro del sistema.',160,yVerificacion+88,{width:390})
 

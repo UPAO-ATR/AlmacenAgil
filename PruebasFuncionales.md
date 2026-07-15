@@ -88,13 +88,13 @@ Catálogo y filtros
 4. Enviar una solicitud manipulada con 1001 y confirmar que el servidor la rechaza.
 5. Intentar una recepción que deje el stock por encima de 1000 y confirmar el rechazo.
 
- Boleta interna
+ Factura interna
 
 1. Configurar los datos del emisor en Configuración.
 2. Completar una cotización hasta Lista para recojo.
 3. Registrar la entrega.
 4. Confirmar que se crea una serie y correlativo.
 5. Descargar el PDF desde Cotizaciones.
-6. Escanear el QR o abrir Verificar boleta interna.
+6. Escanear el QR o abrir Verificar factura interna.
 7. Confirmar que código, huella, total y productos coinciden.
 8. Confirmar que el documento indica que no reemplaza una boleta o factura SUNAT.

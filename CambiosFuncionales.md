@@ -57,7 +57,7 @@ El catálogo permite filtros progresivos y conserva el buscador original.
 - PostgreSQL impide guardar cantidades fuera del rango permitido.
 - Los valores históricos de productos superiores a 1000 se normalizan al iniciar.
 
- Boleta interna verificable
+ Factura interna verificable
 
 - Se genera automáticamente al registrar la entrega de una cotización.
 - Incluye datos del emisor, cliente, productos, descuentos, total y trazabilidad.
