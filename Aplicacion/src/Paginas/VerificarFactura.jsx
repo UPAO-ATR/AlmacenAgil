@@ -39,6 +39,7 @@ export function VerificarFactura() {
         <div><span>Cotización</span><b>N.° {factura.cotizacionid}</b><small>Entregada: {new Date(factura.entregadaen).toLocaleString('es-PE')}</small></div>
         <div><span>Total</span><b>S/ {Number(factura.total).toFixed(2)}</b><small>Emitida: {new Date(factura.emitidaen).toLocaleString('es-PE')}</small></div>
       </div>
+      <p className="totalenletras">Son: {factura.totalenletras}</p>
       <div className="tabla"><table><thead><tr><th>Código</th><th>Producto</th><th>Cantidad</th><th>Subtotal</th></tr></thead><tbody>{factura.productos.map((item,indice)=><tr key={`${item.codigo}-${indice}`}><td>{item.codigo}</td><td>{item.nombre}</td><td>{item.cantidad}</td><td>S/ {Number(item.subtotal).toFixed(2)}</td></tr>)}</tbody></table></div>
       <div className="datosverificacion"><span>Código</span><code>{factura.codigo}</code><span>Huella</span><code>{factura.huella}</code></div>
       <button className="principal" onClick={()=>Descargar(`/facturas/${factura.codigo}/pdf`,`${factura.numero}.pdf`)}>Descargar PDF</button>

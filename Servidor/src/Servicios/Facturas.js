@@ -2,6 +2,7 @@ import crypto from 'crypto'
 import PDFDocument from 'pdfkit'
 import QRCode from 'qrcode'
 import { BaseDatos } from '../BaseDatos.js'
+import { MontoEnLetras } from './Letras.js'
 
 function CodigoAleatorio() {
   return `FIV${new Date().getFullYear()}${crypto.randomBytes(10).toString('hex').toUpperCase()}`
@@ -91,6 +92,7 @@ export async function CrearFactura(cliente,cotizacionid,usuarioid) {
       subtotal:Number(item.subtotal)
     })),
     total:Number(cotizacion.total),
+    totalenletras:MontoEnLetras(cotizacion.total),
     moneda:'PEN'
   }
 
@@ -139,6 +141,7 @@ export function FacturaPublica(factura) {
     entregadaen:contenido.entregadaen,
     productos:contenido.productos.map(item=>({codigo:item.codigo,nombre:item.nombre,cantidad:item.cantidad,subtotal:item.subtotal})),
     total:contenido.total,
+    totalenletras:contenido.totalenletras||MontoEnLetras(contenido.total),
     moneda:contenido.moneda,
     aviso:'Documento interno no tributario'
   }
@@ -224,6 +227,8 @@ export async function GenerarPdfFactura(factura,urlVerificacion) {
     asegurar(90)
     doc.moveDown(.3)
     doc.font('Helvetica-Bold').fontSize(13).fillColor('#173f70').text(`TOTAL: ${Moneda(contenido.total)}`,380,doc.y,{width:177,align:'right'})
+    doc.moveDown(.4)
+    doc.font('Helvetica').fontSize(8).fillColor('#5b697b').text(`Son: ${contenido.totalenletras||MontoEnLetras(contenido.total)}`,38,doc.y,{width:ancho,align:'right'})
     doc.moveDown(1.5)
     doc.fontSize(10).text('Trazabilidad de la operación',38,doc.y)
     doc.font('Helvetica').fontSize(8).fillColor('#172033')
