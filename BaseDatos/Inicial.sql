@@ -421,21 +421,21 @@ CREATE INDEX IF NOT EXISTS indiceauditoriaaccionesfecha ON auditoriaacciones(cre
 CREATE INDEX IF NOT EXISTS indicenotificacionesfecha ON notificaciones(creadoen DESC);
 
 INSERT INTO categorias(nombre) VALUES
-('Papelería'),
-('Escritura'),
-('Archivo'),
-('Oficina')
+('Papeles'),
+('Cartones'),
+('Sobres'),
+('Otros')
 ON CONFLICT DO NOTHING;
 
-INSERT INTO productos(codigo,nombre,descripcion,categoriaid,tipoproducto,material,grosor,dimensiones,maximopedido,precioventa,preciocompra,descuentoventa,descuentocompra,stockactual,stockminimo,stockmensual) VALUES
-('PAP001','Papel Bond A4','Resma de 500 hojas',1,'Papel','Bond','75 g','A4',100,24.90,18.50,0,0,48,20,80),
-('ESC001','Lapicero Azul','Caja por 50 unidades',2,'Otros','Plástico','No aplica','Estándar',100,31.50,22.00,5,0,16,15,40),
-('ARC001','Archivador A4','Lomo ancho reforzado',3,'Otros','Cartón prensado','No aplica','A4',100,9.90,6.20,0,3,7,10,30),
-('OFI001','Grapadora Mediana','Capacidad de 25 hojas',4,'Otros','Metal','No aplica','Mediana',50,18.90,12.50,0,0,0,5,12),
-('PAP002','Papel Avena 90 g','Paquete de papel avena',1,'Papel','Avena','90 g','40 cm x 60 cm',120,32.90,24.50,0,0,35,12,50),
-('PAP003','Papel Dúplex C10','Lámina de papel dúplex',1,'Papel','Dúplex','C10','A4',150,1.80,1.10,0,0,180,50,250),
-('CAR001','Cartón Corrugado 3 mm','Plancha de cartón corrugado',1,'Cartón','Corrugado','3 mm','50 cm x 70 cm',80,8.50,5.60,0,0,42,15,70),
-('SOB001','Sobre Manila Oficio','Paquete de sobres manila',1,'Sobres','Manila','No aplica','Oficio',100,18.00,12.20,10,0,60,20,90)
+INSERT INTO productos(codigo,nombre,descripcion,categoriaid,tipoproducto,material,grosor,dimensiones,maximopedido,precioventa,preciocompra,descuentoventa,descuentocompra,stockactual,stockminimo,stockmensual,activo) VALUES
+('PAP001','Papel Bond A4','Resma de 500 hojas',(SELECT id FROM categorias WHERE nombre='Papeles'),'Papel','Bond','75 g','A4',100,24.90,18.50,0,0,48,20,80,true),
+('ESC001','Lapicero Azul','Caja por 50 unidades',(SELECT id FROM categorias WHERE nombre='Otros'),'Otros','Plástico','No aplica','Estándar',100,31.50,22.00,5,0,16,15,40,false),
+('ARC001','Archivador A4','Lomo ancho reforzado',(SELECT id FROM categorias WHERE nombre='Otros'),'Otros','Cartón prensado','No aplica','A4',100,9.90,6.20,0,3,7,10,30,false),
+('OFI001','Grapadora Mediana','Capacidad de 25 hojas',(SELECT id FROM categorias WHERE nombre='Otros'),'Otros','Metal','No aplica','Mediana',50,18.90,12.50,0,0,0,5,12,false),
+('PAP002','Papel Avena 90 g','Paquete de papel avena',(SELECT id FROM categorias WHERE nombre='Papeles'),'Papel','Avena','90 g','40 cm x 60 cm',120,32.90,24.50,0,0,35,12,50,true),
+('PAP003','Papel Dúplex C10','Lámina de papel dúplex',(SELECT id FROM categorias WHERE nombre='Papeles'),'Papel','Dúplex','C10','A4',150,1.80,1.10,0,0,180,50,250,true),
+('CAR001','Cartón Corrugado 3 mm','Plancha de cartón corrugado',(SELECT id FROM categorias WHERE nombre='Cartones'),'Cartón','Corrugado','3 mm','50 cm x 70 cm',80,8.50,5.60,0,0,42,15,70,true),
+('SOB001','Sobre Manila Oficio','Paquete de sobres manila',(SELECT id FROM categorias WHERE nombre='Sobres'),'Sobres','Manila','No aplica','Oficio',100,18.00,12.20,10,0,60,20,90,true)
 ON CONFLICT DO NOTHING;
 
 UPDATE productos SET tipoproducto='Papel',material='Bond',grosor='75 g',dimensiones='A4',maximopedido=100 WHERE codigo='PAP001';
