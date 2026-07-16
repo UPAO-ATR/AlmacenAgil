@@ -72,9 +72,9 @@ export function Inventario() {
     } catch (fallo) { setError(fallo.message) }
   }
 
-  const desactivar=async producto=>{
-    if (!confirm(`¿Desactivar ${producto.nombre}?`)) return
-    try { await Solicitar(`/productos/${producto.id}`,{method:'DELETE'});await cargar() } catch (fallo) { setError(fallo.message) }
+  const cambiarEstado=async producto=>{
+    if (!confirm(`¿${producto.activo?'Desactivar':'Activar'} ${producto.nombre}?`)) return
+    try { await Solicitar(`/productos/${producto.id}/estado`,{method:'PATCH',body:JSON.stringify({confirmacion:true})});await cargar() } catch (fallo) { setError(fallo.message) }
   }
 
   const guardarMovimiento=async evento=>{
@@ -96,7 +96,7 @@ export function Inventario() {
         <td>{producto.stockactual}</td><td>{producto.stockreservado}</td><td>{producto.stockdisponible}</td><td>{producto.maximopedido}</td>
         <td>S/ {Number(producto.preciofinal).toFixed(2)}{Number(producto.descuentoventa)>0&&<small className="linea">-{Number(producto.descuentoventa).toFixed(0)} % fijo</small>}</td>
         <td><Estado valor={Number(producto.stockdisponible)===0?'Agotado':Number(producto.stockdisponible)<=Number(producto.stockminimo)?'Crítico':'Normal'}/></td>
-        {administrador&&<td className="accionesfila"><button className="secundario" onClick={()=>abrirEditar(producto)}>Editar</button>{producto.activo&&<button className="secundario peligrotexto" onClick={()=>desactivar(producto)}>Desactivar</button>}</td>}
+        {administrador&&<td className="accionesfila"><button className="secundario" onClick={()=>abrirEditar(producto)}>Editar</button><button className={`secundario ${producto.activo?'peligrotexto':''}`.trim()} onClick={()=>cambiarEstado(producto)}>{producto.activo?'Desactivar':'Activar'}</button></td>}
       </tr>)}</tbody>
     </table></div>
     <div className="seccionsecundaria"><h2>Últimos movimientos</h2><div className="tabla"><table>

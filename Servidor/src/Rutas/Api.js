@@ -433,11 +433,11 @@ Api.put('/productos/:id',Administrador,ValidarIdentificador,Validar(EsquemaProdu
   } finally { cliente.release() }
 })
 
-Api.delete('/productos/:id',Administrador,ValidarIdentificador,async (req,res)=>{
-  const registro=(await BaseDatos.query('UPDATE productos SET activo=false,actualizadoen=NOW() WHERE id=$1 RETURNING id',[req.params.id])).rows[0]
+Api.patch('/productos/:id/estado',Administrador,ValidarIdentificador,Validar(EsquemaConfirmacion),async (req,res)=>{
+  const registro=(await BaseDatos.query('UPDATE productos SET activo=NOT activo,actualizadoen=NOW() WHERE id=$1 RETURNING id,activo',[req.params.id])).rows[0]
   if (NoEncontrado(res,registro)) return
-  await RegistrarAuditoria(req.usuario.id,'DesactivarProducto','Producto',registro.id,{},req.ip)
-  res.status(204).end()
+  await RegistrarAuditoria(req.usuario.id,registro.activo?'ActivarProducto':'DesactivarProducto','Producto',registro.id,{},req.ip)
+  res.json(registro)
 })
 
 Api.get('/movimientos',Almacen,async (_,res)=>{
