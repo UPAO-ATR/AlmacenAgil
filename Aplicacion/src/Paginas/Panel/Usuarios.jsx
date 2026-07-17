@@ -152,11 +152,11 @@ export function Usuarios() {
       </tr>)}</tbody>
     </table></div>
     {modal&&<Modal titulo="Nuevo trabajador" cerrar={()=>setModal(false)}><form onSubmit={guardar} noValidate>
-      <Campo etiqueta="Nombres" value={formulario.nombres} onChange={e=>setFormulario({...formulario,nombres:NombrePersona(e.target.value,80)})} minLength="2" maxLength="80" required/>
-      <Campo etiqueta="Apellidos" value={formulario.apellidos} onChange={e=>setFormulario({...formulario,apellidos:NombrePersona(e.target.value,80)})} minLength="2" maxLength="80" required/>
       <Campo etiqueta="DNI" inputMode="numeric" pattern="[0-9]{8}" maxLength="8" value={formulario.dni} onChange={e=>setFormulario({...formulario,dni:e.target.value.replace(/\D/g,'').slice(0,8)})} required/>
-      <Campo etiqueta="Correo" type="email" maxLength="160" value={formulario.correo} onChange={e=>setFormulario({...formulario,correo:e.target.value.replace(/\s/g,'').slice(0,160)})} required/>
+      <Campo etiqueta="Apellidos" value={formulario.apellidos} onChange={e=>setFormulario({...formulario,apellidos:NombrePersona(e.target.value,80)})} minLength="2" maxLength="80" required/>
+      <Campo etiqueta="Nombres" value={formulario.nombres} onChange={e=>setFormulario({...formulario,nombres:NombrePersona(e.target.value,80)})} minLength="2" maxLength="80" required/>
       <label className="campo"><span>Rol</span><select value={formulario.rol} onChange={e=>setFormulario({...formulario,rol:e.target.value})} required><option value="AsesorVentas">Asesor de ventas</option><option value="JefeAlmacen">Jefe de almacén</option><option value="Administrador">Administrador</option></select></label>
+      <Campo etiqueta="Correo" type="email" maxLength="160" value={formulario.correo} onChange={e=>setFormulario({...formulario,correo:e.target.value.replace(/\s/g,'').slice(0,160)})} required/>
       <button className="principal">Crear trabajador</button>
     </form></Modal>}
     {credenciales&&<Modal titulo={credenciales.ingresotemporal?'Acceso temporal':'Credenciales de activación'} cerrar={()=>setCredenciales(null)}><div className="credencialesmodal">
