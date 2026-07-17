@@ -579,7 +579,8 @@ Api.get('/usuarios/dni/:dni',Administrador,LimiteConsultaDni,async (req,res)=>{
     }
     if (!correo) return res.status(409).json({mensaje:'Ya existe un trabajador registrado con estos datos'})
     res.json({nombres:CapitalizarTexto(resultado.nombres),apellidos:CapitalizarTexto(resultado.apellidos),correo})
-  } catch {
+  } catch (fallo) {
+    console.error('ConsultarDni:',fallo.message)
     res.status(502).json({mensaje:'No se pudo validar el DNI, intente nuevamente'})
   }
 })
