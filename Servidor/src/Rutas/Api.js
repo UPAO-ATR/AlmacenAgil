@@ -189,7 +189,8 @@ Api.get('/ruc/:ruc',LimiteConsultaRuc,async (req,res)=>{
     if (!resultado) return res.status(404).json({mensaje:'RUC no encontrado en SUNAT'})
     if (!RucEsValido(resultado)) return res.status(409).json({mensaje:'El RUC no está activo y habido en SUNAT'})
     res.json({ruc:resultado.numero_documento,razonsocial:resultado.razon_social,estado:resultado.estado,condicion:resultado.condicion})
-  } catch {
+  } catch (fallo) {
+    console.error('ConsultarRuc:',fallo.message)
     res.status(502).json({mensaje:'No se pudo validar el RUC, intente nuevamente'})
   }
 })
