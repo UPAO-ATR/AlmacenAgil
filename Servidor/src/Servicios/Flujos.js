@@ -33,7 +33,7 @@ export async function CrearReabastecimiento(cliente,datos) {
     const observacion=[activo.observacion,datos.observacion].filter(Boolean).filter((valor,indice,lista)=>lista.indexOf(valor)===indice).join(' | ').slice(0,500)
     const actualizado = (await cliente.query(
       `UPDATE reabastecimientos
-       SET cantidadrequerida=GREATEST(cantidadrequerida,$1),observacion=$2,actualizadoen=NOW()
+       SET cantidadrequerida=LEAST(1000,GREATEST(cantidadrequerida,$1)),observacion=$2,actualizadoen=NOW()
        WHERE id=$3 RETURNING *`,
       [cantidad,observacion,activo.id]
     )).rows[0]
