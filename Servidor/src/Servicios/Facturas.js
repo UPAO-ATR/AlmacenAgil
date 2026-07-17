@@ -1,8 +1,13 @@
 import crypto from 'crypto'
+import { readFileSync } from 'fs'
+import { fileURLToPath } from 'url'
+import { dirname,join } from 'path'
 import PDFDocument from 'pdfkit'
 import QRCode from 'qrcode'
 import { BaseDatos } from '../BaseDatos.js'
 import { MontoEnLetras } from './Letras.js'
+
+const Logo=readFileSync(join(dirname(fileURLToPath(import.meta.url)),'../Recursos/Logo.png'))
 
 function CodigoAleatorio() {
   return `FIV${new Date().getFullYear()}${crypto.randomBytes(10).toString('hex').toUpperCase()}`
@@ -172,10 +177,11 @@ export async function GenerarPdfFactura(factura,urlVerificacion) {
     }
     const asegurar=alto=>{if (doc.y+alto>doc.page.height-55) nuevaPagina()}
 
-    doc.fillColor('#173f70').font('Helvetica-Bold').fontSize(21).text('FACTURA INTERNA DE VENTA',38,38)
-    doc.fillColor('#b42318').fontSize(10).text('DOCUMENTO INTERNO NO TRIBUTARIO · NO REEMPLAZA BOLETA O FACTURA SUNAT')
+    doc.image(Logo,38,38,{width:32})
+    doc.fillColor('#173f70').font('Helvetica-Bold').fontSize(18).text('FACTURA INTERNA DE VENTA',80,42)
+    doc.fillColor('#b42318').fontSize(10).text('DOCUMENTO INTERNO NO TRIBUTARIO · NO REEMPLAZA BOLETA O FACTURA SUNAT',80,doc.y,{width:280})
     doc.moveDown(.7)
-    doc.fillColor('#172033').fontSize(12).text(contenido.empresa.nombrecomercial)
+    doc.fillColor('#172033').fontSize(12).text(contenido.empresa.nombrecomercial,38)
     doc.font('Helvetica').fontSize(9)
     doc.text(`Razón social: ${contenido.empresa.razonsocial}`)
     doc.text(`RUC: ${contenido.empresa.ruc}`)

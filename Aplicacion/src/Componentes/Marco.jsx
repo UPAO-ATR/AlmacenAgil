@@ -26,7 +26,7 @@ export function Marco({pagina,setPagina,children}) {
   const visibles=Opciones.filter(([id])=>(usuario.debecambiarclave?['configuracion']:Permisos[usuario.rol]||[]).includes(id))
   return <div className="estructura">
     <aside>
-      <div className="marca"><ShoppingCart/><b>ELIM-ALMACÉN</b></div>
+      <div className="marca"><img src="/icono.png" alt="" className="logoicono"/><b>ELIM-ALMACÉN</b></div>
       <nav>{visibles.map(([id,nombre,Icono])=><button key={id} className={pagina===id?'activo':''} onClick={()=>setPagina(id)}><Icono size={19}/>{nombre}</button>)}</nav>
       <div className="perfil">
         <b>{usuario.nombre}</b><span>{usuario.rol}</span>

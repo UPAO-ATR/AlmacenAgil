@@ -46,7 +46,7 @@ export function Acceso() {
 
   return <div className="fondologin">
     <div className="tarjetalogin">
-      <div className="logotipo">AA</div>
+      <div className="logotipo"><img src="/icono-blanco.png" alt="ELIM-Almacén"/></div>
       <div className="pestanas">
         <button type="button" className={modo==='acceso'?'activo':''} onClick={()=>{setModo('acceso');setError('')}}>Ingresar</button>
         <button type="button" className={modo==='activar'?'activo':''} onClick={()=>{setModo('activar');setError('')}}>Activar cuenta</button>
