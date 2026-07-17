@@ -78,7 +78,7 @@ export function Catalogo() {
 
   return <div className="catalogo">
     <header>
-      <b>ALMACÉN ÁGIL</b>
+      <b>ELIM-ALMACÉN</b>
       <nav>
         <a href="#inicio">Inicio</a>
         <a href="#productos">Productos</a>
@@ -133,7 +133,7 @@ export function Catalogo() {
       {!lista.length&&<p className="sinfiltros">No hay productos que coincidan con los filtros.</p>}
     </section>
     <footer id="contacto">
-      <b>ALMACÉN ÁGIL</b>
+      <b>ELIM-ALMACÉN</b>
       <p>Distribución mayorista de suministros para empresas.</p><a className="enlacefactura" href="?verificarfactura=">Verificar factura interna</a>
     </footer>
     {mostrar&&<Cotizador

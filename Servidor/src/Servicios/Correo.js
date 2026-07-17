@@ -29,7 +29,7 @@ export async function EnviarCorreo(tipo,destinatario,asunto,cuerpo,adjunto,cuerp
   if (transporte) {
     try {
       await transporte.sendMail({
-        from:process.env.REMITENTECORREO||'Almacén Ágil <noresponder@almacenagil.local>',
+        from:process.env.REMITENTECORREO||'ELIM-Almacén <noresponder@almacenagil.local>',
         to:destinatario,
         subject:asunto,
         text:cuerpo,

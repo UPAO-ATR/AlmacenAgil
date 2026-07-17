@@ -596,8 +596,8 @@ Api.post('/usuarios',Administrador,Validar(EsquemaUsuario),async (req,res)=>{
      RETURNING id,nombres,apellidos,dni,correo,rol,activo,correoverificado,metodoactivacion`,
     [req.body.nombres,req.body.apellidos,req.body.dni,req.body.correo,clave,req.body.rol,codigo]
   )).rows[0]
-  const cuerpo=`Su cuenta de Almacén Ágil fue creada.\nCódigo de verificación: ${credenciales.codigo}\nContraseña temporal: ${credenciales.temporal}\nActive su cuenta desde el portal de trabajadores.`
-  const correo=await EnviarCorreo('Trabajador',registro.correo,'Activación de cuenta Almacén Ágil',cuerpo,null,'Credenciales de activación enviadas al trabajador')
+  const cuerpo=`Su cuenta de ELIM-Almacén fue creada.\nCódigo de verificación: ${credenciales.codigo}\nContraseña temporal: ${credenciales.temporal}\nActive su cuenta desde el portal de trabajadores.`
+  const correo=await EnviarCorreo('Trabajador',registro.correo,'Activación de cuenta ELIM-Almacén',cuerpo,null,'Credenciales de activación enviadas al trabajador')
   await RegistrarAuditoria(req.usuario.id,'CrearUsuario','Usuario',registro.id,{rol:registro.rol,correo:registro.correo},req.ip)
   res.status(201).json({
     usuario:registro,

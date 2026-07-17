@@ -159,7 +159,7 @@ export async function GenerarPdfFactura(factura,urlVerificacion) {
   const qr=await QRCode.toBuffer(urlVerificacion,{errorCorrectionLevel:'M',margin:1,width:180})
   const contenido=factura.contenido
   return new Promise((resolver,rechazar)=>{
-    const doc=new PDFDocument({size:'A4',margin:38,info:{Title:`Factura interna ${NumeroFactura(factura)}`,Author:'Almacén Ágil'}})
+    const doc=new PDFDocument({size:'A4',margin:38,info:{Title:`Factura interna ${NumeroFactura(factura)}`,Author:'ELIM-Almacén'}})
     const partes=[]
     doc.on('data',parte=>partes.push(parte))
     doc.on('end',()=>resolver(Buffer.concat(partes)))
@@ -247,7 +247,7 @@ export async function GenerarPdfFactura(factura,urlVerificacion) {
     doc.fillColor('#2366b1').text(urlVerificacion,160,yVerificacion+67,{width:397,link:urlVerificacion,underline:true})
     doc.fillColor('#5b697b').text('Escanee el código QR o consulte la dirección para comprobar que los datos coinciden con el registro del sistema.',160,yVerificacion+88,{width:390})
 
-    doc.fontSize(7).fillColor('#7a8796').text('Este documento acredita internamente la venta y entrega registrada en Almacén Ágil. No tiene validez tributaria ante SUNAT.',38,doc.page.height-38,{width:ancho,align:'center'})
+    doc.fontSize(7).fillColor('#7a8796').text('Este documento acredita internamente la venta y entrega registrada en ELIM-Almacén. No tiene validez tributaria ante SUNAT.',38,doc.page.height-38,{width:ancho,align:'center'})
     doc.end()
   })
 }
